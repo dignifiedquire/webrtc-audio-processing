@@ -67,7 +67,7 @@ if have_protobuf
   test_utils_lib_deps += protobuf_dep
 endif
 
-test_utils_cxxflags = common_cxxflags + ['-DWEBRTC_TEST_RESOURCES_DIR="@0@"'.format(test_resources_dir), '-DWEBRTC_APM_DEBUG_DUMP=0', '-DWEBRTC_AUDIOPROC_FLOAT_PROFILE']
+test_utils_cxxflags = common_cxxflags + ['-DWEBRTC_TEST_RESOURCES_DIR="@0@"'.format(test_resources_dir), '-DWEBRTC_APM_DEBUG_DUMP=0']
 if have_protobuf
   test_utils_cxxflags += '-DWEBRTC_ENABLE_PROTOBUF=1'
 endif
@@ -293,7 +293,7 @@ if use_rust_backend
   apm_unit_tests_deps += rust_apm_dep
 endif
 
-unit_tests_cxxflags = common_cxxflags + ['-DWEBRTC_APM_DEBUG_DUMP=0', '-DWEBRTC_AUDIOPROC_FLOAT_PROFILE']
+unit_tests_cxxflags = common_cxxflags + ['-DWEBRTC_APM_DEBUG_DUMP=0']
 if have_protobuf
   unit_tests_cxxflags += '-DWEBRTC_ENABLE_PROTOBUF=1'
 endif
