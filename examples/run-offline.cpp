@@ -34,7 +34,6 @@ int main(int argc, char **argv) {
 
     webrtc::AudioProcessing::Config config;
     config.echo_canceller.enabled = true;
-    config.echo_canceller.mobile_mode = false;
     config.gain_controller1.enabled = true;
     config.gain_controller1.mode = webrtc::AudioProcessing::Config::GainController1::kAdaptiveAnalog;
 
