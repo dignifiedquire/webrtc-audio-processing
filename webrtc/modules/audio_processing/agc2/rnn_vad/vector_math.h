@@ -17,7 +17,7 @@
 #if defined(WEBRTC_HAS_NEON)
 #include <arm_neon.h>
 #endif
-#if defined(WEBRTC_ARCH_X86_FAMILY) && !defined(WAP_DISABLE_INLINE_SSE)
+#if defined(WEBRTC_ARCH_X86_FAMILY)
 #include <emmintrin.h>
 #endif
 
@@ -40,14 +40,12 @@ class VectorMath {
       : cpu_features_(cpu_features) {}
 
   // Computes the dot product between two equally sized vectors.
-  float DotProduct(rtc::ArrayView<const float> x,
-                   rtc::ArrayView<const float> y) const {
+  float DotProduct(ArrayView<const float> x, ArrayView<const float> y) const {
     RTC_DCHECK_EQ(x.size(), y.size());
 #if defined(WEBRTC_ARCH_X86_FAMILY)
     if (cpu_features_.avx2) {
       return DotProductAvx2(x, y);
     } else if (cpu_features_.sse2) {
-#if !defined(WAP_DISABLE_INLINE_SSE)
       __m128 accumulator = _mm_setzero_ps();
       constexpr int kBlockSizeLog2 = 2;
       constexpr int kBlockSize = 1 << kBlockSizeLog2;
@@ -68,12 +66,11 @@ class VectorMath {
       accumulator = _mm_add_ps(accumulator, high);
       float dot_product = _mm_cvtss_f32(accumulator);
       // Add the result for the last block if incomplete.
-      for (int i = incomplete_block_index;
-           i < rtc::dchecked_cast<int>(x.size()); ++i) {
+      for (int i = incomplete_block_index; i < dchecked_cast<int>(x.size());
+           ++i) {
         dot_product += x[i] * y[i];
       }
       return dot_product;
-#endif
     }
 #elif defined(WEBRTC_HAS_NEON) && defined(WEBRTC_ARCH_ARM64)
     if (cpu_features_.neon) {
@@ -94,7 +91,7 @@ class VectorMath {
       float dot_product = vget_lane_f32(vpadd_f32(tmp, vrev64_f32(tmp)), 0);
       // Add the result for the last block if incomplete.
       for (int i = incomplete_block_index;
-           i < rtc::dchecked_cast<int>(x.size()); ++i) {
+           i < webrtc::dchecked_cast<int>(x.size()); ++i) {
         dot_product += x[i] * y[i];
       }
       return dot_product;
@@ -104,8 +101,8 @@ class VectorMath {
   }
 
  private:
-  float DotProductAvx2(rtc::ArrayView<const float> x,
-                       rtc::ArrayView<const float> y) const;
+  float DotProductAvx2(ArrayView<const float> x,
+                       ArrayView<const float> y) const;
 
   const AvailableCpuFeatures cpu_features_;
 };

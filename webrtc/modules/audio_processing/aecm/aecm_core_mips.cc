@@ -952,10 +952,10 @@ int WebRtcAecm_ProcessBlock(AecmCore* aecm,
   int32_t dfw_buf[PART_LEN2 + 8];
   int32_t efw_buf[PART_LEN2 + 8];
 
-  int16_t* fft = (int16_t*)(((uintptr_t)fft_buf + 31) & ~31);
-  int32_t* echoEst32 = (int32_t*)(((uintptr_t)echoEst32_buf + 31) & ~31);
-  ComplexInt16* dfw = (ComplexInt16*)(((uintptr_t)dfw_buf + 31) & ~31);
-  ComplexInt16* efw = (ComplexInt16*)(((uintptr_t)efw_buf + 31) & ~31);
+  int16_t* fft = (int16_t*)(((uint32_t)fft_buf + 31) & ~31);
+  int32_t* echoEst32 = (int32_t*)(((uint32_t)echoEst32_buf + 31) & ~31);
+  ComplexInt16* dfw = (ComplexInt16*)(((uint32_t)dfw_buf + 31) & ~31);
+  ComplexInt16* efw = (ComplexInt16*)(((uint32_t)efw_buf + 31) & ~31);
 
   int16_t hnl[PART_LEN1];
   int16_t numPosCoef = 0;
@@ -1078,8 +1078,7 @@ int WebRtcAecm_ProcessBlock(AecmCore* aecm,
     // Far end signal through channel estimate in Q8
     // How much can we shift right to preserve resolution
     tmp32no1 = echoEst32[i] - aecm->echoFilt[i];
-    aecm->echoFilt[i] +=
-        rtc::dchecked_cast<int32_t>((int64_t{tmp32no1} * 50) >> 8);
+    aecm->echoFilt[i] += dchecked_cast<int32_t>((int64_t{tmp32no1} * 50) >> 8);
 
     zeros32 = WebRtcSpl_NormW32(aecm->echoFilt[i]) + 1;
     zeros16 = WebRtcSpl_NormW16(supGain) + 1;

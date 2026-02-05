@@ -9,16 +9,15 @@
  */
 #include "modules/audio_processing/aec3/render_delay_controller.h"
 
-#include <stddef.h>
-
-#include <algorithm>
 #include <atomic>
+#include <cstddef>
 #include <memory>
 #include <optional>
 
-#include "api/array_view.h"
 #include "api/audio/echo_canceller3_config.h"
 #include "modules/audio_processing/aec3/aec3_common.h"
+#include "modules/audio_processing/aec3/block.h"
+#include "modules/audio_processing/aec3/clockdrift_detector.h"
 #include "modules/audio_processing/aec3/delay_estimate.h"
 #include "modules/audio_processing/aec3/downsampled_render_buffer.h"
 #include "modules/audio_processing/aec3/echo_path_delay_estimator.h"
@@ -113,7 +112,7 @@ void RenderDelayControllerImpl::LogRenderCall() {}
 
 std::optional<DelayEstimate> RenderDelayControllerImpl::GetDelay(
     const DownsampledRenderBuffer& render_buffer,
-    size_t render_delay_buffer_delay,
+    size_t /* render_delay_buffer_delay */,
     const Block& capture) {
   ++capture_call_counter_;
 
