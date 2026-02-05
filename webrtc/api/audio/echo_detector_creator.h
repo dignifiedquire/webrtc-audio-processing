@@ -11,15 +11,15 @@
 #ifndef API_AUDIO_ECHO_DETECTOR_CREATOR_H_
 #define API_AUDIO_ECHO_DETECTOR_CREATOR_H_
 
-#include "webrtc/api/audio/audio_processing.h"
-#include "webrtc/api/scoped_refptr.h"
+#include "api/audio/audio_processing.h"
+#include "api/scoped_refptr.h"
 
 namespace webrtc {
 
 // Returns an instance of the WebRTC implementation of a residual echo detector.
-// It can be provided to the webrtc::AudioProcessingBuilder to obtain the
+// It can be provided to the BuiltinAudioProcessingBuilder to obtain the
 // usual residual echo metrics.
-rtc::scoped_refptr<EchoDetector> CreateEchoDetector();
+scoped_refptr<EchoDetector> CreateEchoDetector();
 
 }  // namespace webrtc
 

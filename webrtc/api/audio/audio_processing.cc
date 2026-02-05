@@ -9,8 +9,14 @@
  */
 
 #include "api/audio/audio_processing.h"
-#include <string>
 
+#include <memory>
+#include <string>
+#include <utility>
+
+#include "absl/base/nullability.h"
+#include "api/environment/environment.h"
+#include "api/scoped_refptr.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/strings/string_builder.h"
 
@@ -49,10 +55,8 @@ std::string GainController1ModeToString(const Agc1Config::Mode& mode) {
 
 }  // namespace
 
-constexpr int AudioProcessing::kNativeSampleRatesHz[];
-
 void CustomProcessing::SetRuntimeSetting(
-    AudioProcessing::RuntimeSetting setting) {}
+    AudioProcessing::RuntimeSetting /* setting */) {}
 
 bool Agc1Config::operator==(const Agc1Config& rhs) const {
   const auto& analog_lhs = analog_gain_controller;
@@ -122,7 +126,7 @@ operator==(const AudioProcessing::Config::CaptureLevelAdjustment::
 
 std::string AudioProcessing::Config::ToString() const {
   char buf[2048];
-  rtc::SimpleStringBuilder builder(buf);
+  SimpleStringBuilder builder(buf);
   builder << "AudioProcessing::Config{ "
              "pipeline: { "
              "maximum_internal_processing_rate: "
@@ -206,6 +210,27 @@ std::string AudioProcessing::Config::ToString() const {
           << " }, input_volume_control : { enabled "
           << gain_controller2.input_volume_controller.enabled << "}}";
   return builder.str();
+}
+
+absl_nonnull std::unique_ptr<AudioProcessingBuilderInterface>
+CustomAudioProcessing(
+    absl_nonnull scoped_refptr<AudioProcessing> audio_processing) {
+  class Builder : public AudioProcessingBuilderInterface {
+   public:
+    explicit Builder(absl_nonnull scoped_refptr<AudioProcessing> ap)
+        : ap_(std::move(ap)) {}
+
+    absl_nullable scoped_refptr<AudioProcessing> Build(
+        const Environment& /*env*/) override {
+      return std::move(ap_);
+    }
+
+   private:
+    absl_nonnull scoped_refptr<AudioProcessing> ap_;
+  };
+
+  RTC_CHECK(audio_processing);
+  return std::make_unique<Builder>(std::move(audio_processing));
 }
 
 }  // namespace webrtc
