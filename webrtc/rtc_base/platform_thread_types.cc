@@ -10,19 +10,19 @@
 
 #include "rtc_base/platform_thread_types.h"
 
+// IWYU pragma: begin_keep
 #if defined(WEBRTC_LINUX)
+#include <linux/prctl.h>
 #include <sys/prctl.h>
 #include <sys/syscall.h>
-#endif
 
-#if defined(__DragonFly__) || defined(__FreeBSD__) || defined(__OpenBSD__) // WEBRTC_BSD
-#include <pthread_np.h>
-#elif defined(__NetBSD__) // WEBRTC_BSD
-#include <lwp.h>
+#if !defined(WEBRTC_ARCH_ARM) && !defined(WEBRTC_ARCH_ARM64)
+#include <asm/unistd_64.h>
+#endif
 #endif
 
 #if defined(WEBRTC_WIN)
-#include "rtc_base/arraysize.h"
+#include <iterator>
 
 // The SetThreadDescription API was brought in version 1607 of Windows 10.
 // For compatibility with various versions of winuser and avoid clashing with
@@ -32,13 +32,13 @@ typedef HRESULT(WINAPI* RTC_SetThreadDescription)(HANDLE hThread,
 #endif
 
 #if defined(WEBRTC_FUCHSIA)
-#include <string.h>
 #include <zircon/syscalls.h>
 
 #include "rtc_base/checks.h"
 #endif
+// IWYU pragma: end_keep
 
-namespace rtc {
+namespace webrtc {
 
 PlatformThreadId CurrentThreadId() {
 #if defined(WEBRTC_WIN)
@@ -52,12 +52,6 @@ PlatformThreadId CurrentThreadId() {
   return zx_thread_self();
 #elif defined(WEBRTC_LINUX)
   return syscall(__NR_gettid);
-#elif defined(__DragonFly__) || defined(__FreeBSD__) // WEBRTC_BSD
-  return pthread_getthreadid_np();
-#elif defined(__NetBSD__) // WEBRTC_BSD
-  return _lwp_self();
-#elif defined(__OpenBSD__) // WEBRTC_BSD
-  return getthrid();
 #elif defined(__EMSCRIPTEN__)
   return static_cast<PlatformThreadId>(pthread_self());
 #else
@@ -95,13 +89,13 @@ void SetCurrentThreadName(const char* name) {
   if (set_thread_description_func) {
     // Convert from ASCII to UTF-16.
     wchar_t wide_thread_name[64];
-    for (size_t i = 0; i < arraysize(wide_thread_name) - 1; ++i) {
+    for (size_t i = 0; i < std::size(wide_thread_name) - 1; ++i) {
       wide_thread_name[i] = name[i];
       if (wide_thread_name[i] == L'\0')
         break;
     }
     // Guarantee null-termination.
-    wide_thread_name[arraysize(wide_thread_name) - 1] = L'\0';
+    wide_thread_name[std::size(wide_thread_name) - 1] = L'\0';
     set_thread_description_func(::GetCurrentThread(), wide_thread_name);
   }
 
@@ -118,22 +112,16 @@ void SetCurrentThreadName(const char* name) {
 
 #pragma warning(push)
 #pragma warning(disable : 6320 6322)
-#ifndef __MINGW32__
   __try {
     ::RaiseException(0x406D1388, 0, sizeof(threadname_info) / sizeof(ULONG_PTR),
                      reinterpret_cast<ULONG_PTR*>(&threadname_info));
   } __except (EXCEPTION_EXECUTE_HANDLER) {  // NOLINT
   }
-#endif
 #pragma warning(pop)
 #elif defined(WEBRTC_LINUX) || defined(WEBRTC_ANDROID)
   prctl(PR_SET_NAME, reinterpret_cast<unsigned long>(name));  // NOLINT
 #elif defined(WEBRTC_MAC) || defined(WEBRTC_IOS)
   pthread_setname_np(name);
-#elif defined(__DragonFly__) || defined(__FreeBSD__) || defined(__OpenBSD__) // WEBRTC_BSD
-  pthread_set_name_np(pthread_self(), name);
-#elif defined(__NetBSD__) // WEBRTC_BSD
-  pthread_setname_np(pthread_self(), "%s", (void*)name);
 #elif defined(WEBRTC_FUCHSIA)
   zx_status_t status = zx_object_set_property(zx_thread_self(), ZX_PROP_NAME,
                                               name, strlen(name));
@@ -141,4 +129,4 @@ void SetCurrentThreadName(const char* name) {
 #endif
 }
 
-}  // namespace rtc
+}  // namespace webrtc

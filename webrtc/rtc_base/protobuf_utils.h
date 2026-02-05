@@ -8,13 +8,16 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
+
 #ifndef RTC_BASE_PROTOBUF_UTILS_H_
 #define RTC_BASE_PROTOBUF_UTILS_H_
 
-#include <string>
+#if WEBRTC_ENABLE_PROTOBUF
 
-#include <google/protobuf/message_lite.h>
-#include <google/protobuf/repeated_field.h>
+#include "third_party/protobuf/src/google/protobuf/message_lite.h"  // nogncheck
+// IWYU pragma: begin_keep
+#include "third_party/protobuf/src/google/protobuf/repeated_field.h"  // nogncheck
+// IWYU pragma: end_keep
 
 namespace webrtc {
 
@@ -22,5 +25,7 @@ using google::protobuf::MessageLite;
 using google::protobuf::RepeatedPtrField;
 
 }  // namespace webrtc
+
+#endif  // WEBRTC_ENABLE_PROTOBUF
 
 #endif  // RTC_BASE_PROTOBUF_UTILS_H_
