@@ -13,6 +13,7 @@ This directory contains implementation plans for webrtc-audio-processing develop
 
 | Plan | Description | Status |
 |------|-------------|--------|
+| [rust-port.md](todo/rust-port.md) | Full Rust port with C API, property tests, SIMD optimizations | Planning complete |
 | [upgrade-m136.md](todo/upgrade-m136.md) | Upgrade from WebRTC M131 to M136 | Ready to start |
 
 ### Completed
