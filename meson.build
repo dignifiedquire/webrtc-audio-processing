@@ -215,3 +215,13 @@ audio_processing_dep = declare_dependency(
 meson.override_dependency(apm_project_name, audio_processing_dep)
 
 subdir('examples')
+
+# Tests
+if get_option('tests').allowed()
+  gtest_dep = dependency('gtest', required: get_option('tests'), fallback: ['gtest', 'gtest_dep'])
+  gtest_main_dep = dependency('gtest_main', required: get_option('tests'), fallback: ['gtest', 'gtest_main_dep'])
+  gmock_dep = dependency('gmock', required: get_option('tests'), fallback: ['gtest', 'gmock_dep'])
+  if gtest_dep.found() and gmock_dep.found()
+    subdir('tests')
+  endif
+endif
