@@ -15,6 +15,7 @@
 
 #include "common_audio/signal_processing/include/signal_processing_library.h"
 
+#if defined(MIPS_DSP_R1_LE)
 int WebRtcSpl_ScaleAndAddVectorsWithRound_mips(const int16_t* in_vector1,
                                                int16_t in_vector1_scale,
                                                const int16_t* in_vector2,
@@ -62,3 +63,4 @@ int WebRtcSpl_ScaleAndAddVectorsWithRound_mips(const int16_t* in_vector1,
   }
   return 0;
 }
+#endif
