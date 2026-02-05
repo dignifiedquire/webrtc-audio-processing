@@ -55,7 +55,7 @@ size_t ReadMessageBytesFromFile(FILE* file, std::unique_ptr<uint8_t[]>* bytes) {
 }
 
 // Returns true on success, false on error or end-of-file.
-bool ReadMessageFromFile(FILE* file, MessageLite* msg) {
+bool ReadMessageFromFile(FILE* file, google::protobuf::MessageLite* msg) {
   std::unique_ptr<uint8_t[]> bytes;
   size_t size = ReadMessageBytesFromFile(file, &bytes);
   if (!size)
@@ -66,7 +66,7 @@ bool ReadMessageFromFile(FILE* file, MessageLite* msg) {
 }
 
 // Returns true on success, false on error or end of string stream.
-bool ReadMessageFromString(std::stringstream* input, MessageLite* msg) {
+bool ReadMessageFromString(std::stringstream* input, google::protobuf::MessageLite* msg) {
   std::unique_ptr<uint8_t[]> bytes;
   size_t size = ReadMessageBytesFromString(input, &bytes);
   if (!size)

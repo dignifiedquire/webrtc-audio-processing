@@ -28,7 +28,7 @@
 #include "api/scoped_refptr.h"
 #include "api/task_queue/task_queue_base.h"
 #include "modules/audio_processing/include/aec_dump.h"
-#include "test/gmock.h"
+#include <gmock/gmock.h>
 
 namespace webrtc {
 

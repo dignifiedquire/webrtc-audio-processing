@@ -29,7 +29,7 @@
 #include "webrtc/system_wrappers/include/metrics.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "test/testsupport/file_utils.h"
+#include "tests/test_utils/file_utils.h"
 
 using ::testing::_;
 using ::testing::AtLeast;

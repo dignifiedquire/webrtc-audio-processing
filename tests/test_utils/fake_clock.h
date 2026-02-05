@@ -23,14 +23,14 @@ namespace rtc {
 
 // Fake clock for use with unit tests, which does not tick on its own.
 // Starts at time 0.
-class FakeClock : public ClockInterface {
+class FakeClock : public webrtc::ClockInterface {
  public:
   FakeClock() = default;
   FakeClock(const FakeClock&) = delete;
   FakeClock& operator=(const FakeClock&) = delete;
   ~FakeClock() override = default;
 
-  // ClockInterface implementation.
+  // webrtc::ClockInterface implementation.
   int64_t TimeNanos() const override;
 
   // Methods that can be used by the test to control the time.
@@ -51,7 +51,7 @@ class ScopedFakeClock : public FakeClock {
   ~ScopedFakeClock() override;
 
  private:
-  ClockInterface* prev_clock_;
+  webrtc::ClockInterface* prev_clock_;
 };
 
 }  // namespace rtc

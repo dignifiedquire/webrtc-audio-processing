@@ -29,7 +29,7 @@
 #include "webrtc/modules/audio_processing/aec3/delay_estimate.h"
 #include "webrtc/modules/audio_processing/aec3/render_delay_buffer.h"
 #include "webrtc/modules/audio_processing/aec3/subtractor_output.h"
-#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "tests/test_utils/echo_canceller_test_tools.h"
 #include "webrtc/rtc_base/random.h"
 #include <gtest/gtest.h>
 

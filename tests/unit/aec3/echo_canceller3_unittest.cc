@@ -26,7 +26,7 @@
 #include "webrtc/api/audio/neural_residual_echo_estimator.h"
 #include "webrtc/api/environment/environment.h"
 #include "webrtc/api/environment/environment_factory.h"
-#include "webrtc/api/field_trials.h"
+#include "api/field_trials.h"
 #include "webrtc/modules/audio_processing/aec3/aec3_common.h"
 #include "webrtc/modules/audio_processing/aec3/block.h"
 #include "webrtc/modules/audio_processing/aec3/block_processor.h"

@@ -4,7 +4,7 @@ project('webrtc-audio-processing', 'c', 'cpp',
   default_options : [ 'warning_level=1',
                       'buildtype=debugoptimized',
                       'c_std=c11',
-                      'cpp_std=c++17',
+                      'cpp_std=c++20',
                     ]
 )
 
@@ -49,7 +49,7 @@ have_win = false
 # if pkg-config is not found, which is really the most reliable way of building
 # abseil due to strict C++ standard match requirements.
 absl_dep = [
-  dependency('absl_base', default_options: ['cpp_std=c++17'], version: '>=20240722'),
+  dependency('absl_base', default_options: ['cpp_std=c++20'], version: '>=20240722'),
   dependency('absl_flags'),
   dependency('absl_strings'),
   dependency('absl_numeric'),
@@ -184,7 +184,8 @@ common_cflags = [
   '-DWEBRTC_ENABLE_SYMBOL_EXPORT',
   # avoid windows.h/winsock2.h conflicts
   '-D_WINSOCKAPI_',
-  '-DNDEBUG'
+  '-DNDEBUG',
+  '-DWEBRTC_APM_DEBUG_DUMP=0',
   ] + platform_cflags + os_cflags + arch_cflags
 common_cxxflags = common_cflags
 common_deps = os_deps + [absl_dep]

@@ -16,8 +16,8 @@
 #include "webrtc/api/array_view.h"
 #include "webrtc/api/audio/audio_processing.h"
 #include "webrtc/modules/audio_processing/audio_buffer.h"
-#include "webrtc/modules/audio_processing/test/audio_buffer_tools.h"
-#include "webrtc/modules/audio_processing/test/bitexactness_tools.h"
+#include "tests/test_utils/audio_buffer_tools.h"
+#include "tests/test_utils/bitexactness_tools.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {

@@ -2,8 +2,11 @@ api_sources = [
   'audio/audio_frame.cc',
   'audio/audio_processing.cc',
   'audio/audio_processing_statistics.cc',
+  'audio/builtin_audio_processing_builder.cc',
   'audio/channel_layout.cc',
   'audio/echo_canceller3_config.cc',
+  'environment/environment_factory.cc',
+  'rtc_event_log/rtc_event_log.cc',
   'rtp_headers.cc',
   'rtp_packet_info.cc',
   'task_queue/task_queue_base.cc',
@@ -47,4 +50,3 @@ libapi = static_library('libapi',
 api_dep = declare_dependency(
     link_with: libapi
 )
-

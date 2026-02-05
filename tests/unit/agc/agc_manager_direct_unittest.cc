@@ -36,7 +36,7 @@
 #include "test/create_test_field_trials.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "test/testsupport/file_utils.h"
+#include "tests/test_utils/file_utils.h"
 
 using ::testing::_;
 using ::testing::AtLeast;

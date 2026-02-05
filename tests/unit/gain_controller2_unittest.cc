@@ -20,12 +20,12 @@
 
 #include "webrtc/api/audio/audio_processing.h"
 #include "webrtc/api/environment/environment_factory.h"
-#include "webrtc/modules/audio_coding/neteq/tools/input_audio_file.h"
+#include "tests/test_utils/input_audio_file.h"
 #include "webrtc/modules/audio_processing/agc2/agc2_testing_common.h"
 #include "webrtc/modules/audio_processing/agc2/input_volume_controller.h"
 #include "webrtc/modules/audio_processing/audio_buffer.h"
-#include "webrtc/modules/audio_processing/test/audio_buffer_tools.h"
-#include "webrtc/modules/audio_processing/test/bitexactness_tools.h"
+#include "tests/test_utils/audio_buffer_tools.h"
+#include "tests/test_utils/bitexactness_tools.h"
 #include "webrtc/rtc_base/checks.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

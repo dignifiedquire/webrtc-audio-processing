@@ -14,6 +14,7 @@ base_sources = [
   'string_to_number.cc',
   'string_utils.cc',
   'strings/string_builder.cc',
+  'strings/string_format.cc',
   'synchronization/sequence_checker_internal.cc',
   'synchronization/yield_policy.cc',
   'system/file_wrapper.cc',
@@ -74,4 +75,3 @@ libbase = static_library('libbase',
 base_dep = declare_dependency(
     link_with: libbase
 )
-

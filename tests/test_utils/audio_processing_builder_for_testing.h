@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "api/scoped_refptr.h"
 #include "webrtc/api/audio/audio_processing.h"
 
 namespace webrtc {
@@ -60,7 +61,7 @@ class AudioProcessingBuilderForTesting {
 
   // Sets the echo detector to inject when APM is created.
   AudioProcessingBuilderForTesting& SetEchoDetector(
-      rtc::scoped_refptr<EchoDetector> echo_detector) {
+      scoped_refptr<EchoDetector> echo_detector) {
     echo_detector_ = std::move(echo_detector);
     return *this;
   }
@@ -76,17 +77,14 @@ class AudioProcessingBuilderForTesting {
   // unspecified. Injects the specified components transferring the ownership
   // to the newly created APM instance - i.e., except for the config, the
   // builder is reset to its initial state.
-  rtc::scoped_refptr<AudioProcessing> Create();
+  scoped_refptr<AudioProcessing> Create();
 
  private:
-  // Transfers the ownership to a non-testing builder.
-  void TransferOwnershipsToBuilder(AudioProcessingBuilder* builder);
-
   AudioProcessing::Config config_;
   std::unique_ptr<EchoControlFactory> echo_control_factory_;
   std::unique_ptr<CustomProcessing> capture_post_processing_;
   std::unique_ptr<CustomProcessing> render_pre_processing_;
-  rtc::scoped_refptr<EchoDetector> echo_detector_;
+  scoped_refptr<EchoDetector> echo_detector_;
   std::unique_ptr<CustomAudioAnalyzer> capture_analyzer_;
 };
 

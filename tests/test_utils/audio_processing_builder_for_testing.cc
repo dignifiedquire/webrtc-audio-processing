@@ -13,6 +13,9 @@
 #include <memory>
 #include <utility>
 
+#include "api/audio/builtin_audio_processing_builder.h"
+#include "api/environment/environment_factory.h"
+#include "api/make_ref_counted.h"
 #include "webrtc/modules/audio_processing/audio_processing_impl.h"
 
 namespace webrtc {
@@ -20,32 +23,14 @@ namespace webrtc {
 AudioProcessingBuilderForTesting::AudioProcessingBuilderForTesting() = default;
 AudioProcessingBuilderForTesting::~AudioProcessingBuilderForTesting() = default;
 
-#ifdef WEBRTC_EXCLUDE_AUDIO_PROCESSING_MODULE
-
-rtc::scoped_refptr<AudioProcessing> AudioProcessingBuilderForTesting::Create() {
-  return rtc::make_ref_counted<AudioProcessingImpl>(
-      config_, std::move(capture_post_processing_),
-      std::move(render_pre_processing_), std::move(echo_control_factory_),
-      std::move(echo_detector_), std::move(capture_analyzer_));
-}
-
-#else
-
-rtc::scoped_refptr<AudioProcessing> AudioProcessingBuilderForTesting::Create() {
-  AudioProcessingBuilder builder;
-  TransferOwnershipsToBuilder(&builder);
-  return builder.SetConfig(config_).Create();
-}
-
-#endif
-
-void AudioProcessingBuilderForTesting::TransferOwnershipsToBuilder(
-    AudioProcessingBuilder* builder) {
-  builder->SetCapturePostProcessing(std::move(capture_post_processing_));
-  builder->SetRenderPreProcessing(std::move(render_pre_processing_));
-  builder->SetEchoControlFactory(std::move(echo_control_factory_));
-  builder->SetEchoDetector(std::move(echo_detector_));
-  builder->SetCaptureAnalyzer(std::move(capture_analyzer_));
+scoped_refptr<AudioProcessing> AudioProcessingBuilderForTesting::Create() {
+  BuiltinAudioProcessingBuilder builder(config_);
+  builder.SetCapturePostProcessing(std::move(capture_post_processing_));
+  builder.SetRenderPreProcessing(std::move(render_pre_processing_));
+  builder.SetEchoControlFactory(std::move(echo_control_factory_));
+  builder.SetEchoDetector(std::move(echo_detector_));
+  builder.SetCaptureAnalyzer(std::move(capture_analyzer_));
+  return builder.Build(CreateEnvironment());
 }
 
 }  // namespace webrtc

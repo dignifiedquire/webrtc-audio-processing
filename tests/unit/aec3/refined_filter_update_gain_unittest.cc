@@ -34,7 +34,7 @@
 #include "webrtc/modules/audio_processing/aec3/render_signal_analyzer.h"
 #include "webrtc/modules/audio_processing/aec3/subtractor_output.h"
 #include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
-#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "tests/test_utils/echo_canceller_test_tools.h"
 #include "webrtc/rtc_base/checks.h"
 #include "webrtc/rtc_base/numerics/safe_minmax.h"
 #include "webrtc/rtc_base/random.h"

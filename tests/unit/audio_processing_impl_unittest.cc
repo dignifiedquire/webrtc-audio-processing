@@ -29,9 +29,9 @@
 #include "webrtc/api/make_ref_counted.h"
 #include "webrtc/api/ref_count.h"
 #include "webrtc/api/scoped_refptr.h"
-#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
-#include "webrtc/modules/audio_processing/test/echo_control_mock.h"
-#include "webrtc/modules/audio_processing/test/test_utils.h"
+#include "tests/test_utils/echo_canceller_test_tools.h"
+#include "tests/test_utils/echo_control_mock.h"
+#include "tests/test_utils/test_utils.h"
 #include "webrtc/rtc_base/random.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

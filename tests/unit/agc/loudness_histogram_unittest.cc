@@ -21,7 +21,7 @@
 #include "absl/strings/string_view.h"
 #include "webrtc/modules/audio_processing/agc/utility.h"
 #include <gtest/gtest.h>
-#include "test/testsupport/file_utils.h"
+#include "tests/test_utils/file_utils.h"
 
 namespace webrtc {
 

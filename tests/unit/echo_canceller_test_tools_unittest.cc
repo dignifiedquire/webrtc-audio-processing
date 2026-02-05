@@ -8,7 +8,7 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "tests/test_utils/echo_canceller_test_tools.h"
 
 #include <algorithm>
 #include <cstddef>

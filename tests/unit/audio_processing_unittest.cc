@@ -48,28 +48,28 @@
 #include "webrtc/common_audio/resampler/push_sinc_resampler.h"
 #include "webrtc/modules/audio_processing/aec_dump/aec_dump_factory.h"
 #include "webrtc/modules/audio_processing/include/mock_audio_processing.h"
-#include "webrtc/modules/audio_processing/test/protobuf_utils.h"
-#include "webrtc/modules/audio_processing/test/test_utils.h"
+#include "tests/test_utils/protobuf_utils.h"
+#include "tests/test_utils/test_utils.h"
 #include "webrtc/rtc_base/checks.h"
 #include "webrtc/rtc_base/cpu_info.h"
-#include "webrtc/rtc_base/fake_clock.h"
+#include "tests/test_utils/fake_clock.h"
 #include "webrtc/rtc_base/numerics/safe_conversions.h"
 #include "webrtc/rtc_base/numerics/safe_minmax.h"
 #include "webrtc/rtc_base/protobuf_utils.h"
 #include "webrtc/rtc_base/strings/string_builder.h"
 #include "webrtc/rtc_base/swap_queue.h"
 #include "webrtc/rtc_base/system/file_wrapper.h"
-#include "webrtc/rtc_base/task_queue_for_test.h"
+#include "tests/test_utils/task_queue_for_test.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include "test/testsupport/file_utils.h"
+#include "tests/test_utils/file_utils.h"
 
 #ifdef WEBRTC_ANDROID_PLATFORM_BUILD
-#include "external/webrtc/webrtc/modules/audio_processing/debug.pb.h"
+#include "debug.pb.h"
 #include "external/webrtc/webrtc/modules/audio_processing/test/unittest.pb.h"
 #else
-#include "webrtc/modules/audio_processing/debug.pb.h"
-#include "webrtc/modules/audio_processing/test/unittest.pb.h"
+#include "debug.pb.h"
+#include "unittest.pb.h"
 #endif
 
 ABSL_FLAG(bool,
