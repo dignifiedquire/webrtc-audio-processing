@@ -165,12 +165,17 @@ if ['x86', 'x86_64'].contains(host_machine.cpu_family())
   endif
 endif
 
-neon_opt = get_option('neon').require(have_neon)
+neon_opt = get_option('neon').require(have_neon).disable_auto_if(not have_neon)
 
-if neon_opt.enabled()
+if neon_opt.allowed()
   arch_cflags += ['-DWEBRTC_HAS_NEON']
   if not have_arm64
     arch_cflags += ['-mfpu=neon']
+  endif
+  # Enable FMA contraction so C reference code matches NEON optimized code
+  # which uses fused multiply-add instructions (vmlaq_f32)
+  if cpp.has_argument('-ffp-contract=fast')
+    arch_cflags += ['-ffp-contract=fast']
   endif
 endif
 

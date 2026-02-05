@@ -1,61 +1,42 @@
 /*
- *  Copyright (c) 2024 The WebRTC project authors. All Rights Reserved.
+ *  Copyright (c) 2015 The WebRTC project authors. All Rights Reserved.
  *
  *  Use of this source code is governed by a BSD-style license
  *  that can be found in the LICENSE file in the root of the source
- *  tree.
+ *  tree. An additional intellectual property rights grant can be found
+ *  in the file PATENTS.  All contributing project authors may
+ *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef TESTS_TEST_UTILS_AUDIO_BUFFER_TOOLS_H_
-#define TESTS_TEST_UTILS_AUDIO_BUFFER_TOOLS_H_
+#ifndef MODULES_AUDIO_PROCESSING_TEST_AUDIO_BUFFER_TOOLS_H_
+#define MODULES_AUDIO_PROCESSING_TEST_AUDIO_BUFFER_TOOLS_H_
 
-#include <cmath>
-#include <memory>
 #include <vector>
 
-#include "api/audio/audio_processing.h"
-#include "modules/audio_processing/audio_buffer.h"
+#include "webrtc/api/array_view.h"
+#include "webrtc/api/audio/audio_processing.h"
+#include "webrtc/modules/audio_processing/audio_buffer.h"
 
 namespace webrtc {
 namespace test {
 
-// Fill an AudioBuffer channel with a sine wave
-void FillBufferWithSine(AudioBuffer* buffer,
-                        size_t channel,
-                        float frequency_hz,
-                        float amplitude);
-
-// Fill an AudioBuffer channel with white noise
-void FillBufferWithNoise(AudioBuffer* buffer,
-                         size_t channel,
-                         float amplitude);
-
-// Fill an AudioBuffer channel with silence (zeros)
-void FillBufferWithSilence(AudioBuffer* buffer, size_t channel);
-
-// Fill all channels with silence
-void FillBufferWithSilence(AudioBuffer* buffer);
-
-// Compute the RMS of a buffer channel
-float ComputeRms(const AudioBuffer& buffer, size_t channel);
-
-// Check if two buffers are approximately equal
-bool BuffersApproximatelyEqual(const AudioBuffer& a,
-                               const AudioBuffer& b,
-                               float tolerance);
-
-// Copy interleaved float vector data into an AudioBuffer.
-// The input vector should be interleaved: [ch0_s0, ch1_s0, ch0_s1, ch1_s1, ...]
+// Copies a vector into an audiobuffer.
 void CopyVectorToAudioBuffer(const StreamConfig& stream_config,
-                             const std::vector<float>& input,
-                             AudioBuffer* audio_buffer);
+                             rtc::ArrayView<const float> source,
+                             AudioBuffer* destination);
 
-// Extract data from an AudioBuffer into an interleaved float vector.
+// Extracts a vector from an audiobuffer.
 void ExtractVectorFromAudioBuffer(const StreamConfig& stream_config,
-                                  AudioBuffer* audio_buffer,
-                                  std::vector<float>* output);
+                                  AudioBuffer* source,
+                                  std::vector<float>* destination);
+
+// Sets all values in `audio_buffer` to `value`.
+void FillBuffer(float value, AudioBuffer& audio_buffer);
+
+// Sets all values channel `channel` for `audio_buffer` to `value`.
+void FillBufferChannel(float value, int channel, AudioBuffer& audio_buffer);
 
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // TESTS_TEST_UTILS_AUDIO_BUFFER_TOOLS_H_
+#endif  // MODULES_AUDIO_PROCESSING_TEST_AUDIO_BUFFER_TOOLS_H_

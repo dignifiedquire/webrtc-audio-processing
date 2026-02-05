@@ -10,100 +10,11 @@
 
 #include "tests/test_utils/audio_buffer_tools.h"
 
-#include <cmath>
-#include <cstring>
-#include <random>
-#include <vector>
-
-#include "rtc_base/checks.h"
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
+#include <string.h>
 
 namespace webrtc {
 namespace test {
 
-void FillBufferWithSine(AudioBuffer* buffer,
-                        size_t channel,
-                        float frequency_hz,
-                        float amplitude) {
-  const size_t num_frames = buffer->num_frames();
-  const int sample_rate = buffer->num_frames() * 100;  // 10ms frames
-  float* data = buffer->channels()[channel];
-
-  for (size_t i = 0; i < num_frames; ++i) {
-    float t = static_cast<float>(i) / sample_rate;
-    data[i] = amplitude * std::sin(2.0f * static_cast<float>(M_PI) * frequency_hz * t);
-  }
-}
-
-void FillBufferWithNoise(AudioBuffer* buffer,
-                         size_t channel,
-                         float amplitude) {
-  static std::random_device rd;
-  static std::mt19937 gen(rd());
-  std::uniform_real_distribution<float> dis(-amplitude, amplitude);
-
-  const size_t num_frames = buffer->num_frames();
-  float* data = buffer->channels()[channel];
-
-  for (size_t i = 0; i < num_frames; ++i) {
-    data[i] = dis(gen);
-  }
-}
-
-void FillBufferWithSilence(AudioBuffer* buffer, size_t channel) {
-  const size_t num_frames = buffer->num_frames();
-  float* data = buffer->channels()[channel];
-
-  for (size_t i = 0; i < num_frames; ++i) {
-    data[i] = 0.0f;
-  }
-}
-
-void FillBufferWithSilence(AudioBuffer* buffer) {
-  for (size_t ch = 0; ch < buffer->num_channels(); ++ch) {
-    FillBufferWithSilence(buffer, ch);
-  }
-}
-
-float ComputeRms(const AudioBuffer& buffer, size_t channel) {
-  const size_t num_frames = buffer.num_frames();
-  const float* data = buffer.channels_const()[channel];
-
-  float sum_sq = 0.0f;
-  for (size_t i = 0; i < num_frames; ++i) {
-    sum_sq += data[i] * data[i];
-  }
-
-  return std::sqrt(sum_sq / num_frames);
-}
-
-bool BuffersApproximatelyEqual(const AudioBuffer& a,
-                               const AudioBuffer& b,
-                               float tolerance) {
-  if (a.num_channels() != b.num_channels() ||
-      a.num_frames() != b.num_frames()) {
-    return false;
-  }
-
-  for (size_t ch = 0; ch < a.num_channels(); ++ch) {
-    const float* data_a = a.channels_const()[ch];
-    const float* data_b = b.channels_const()[ch];
-    for (size_t i = 0; i < a.num_frames(); ++i) {
-      if (std::abs(data_a[i] - data_b[i]) > tolerance) {
-        return false;
-      }
-    }
-  }
-
-  return true;
-}
-
-namespace {
-
-// Helper to set up a frame with stacked channel pointers
 void SetupFrame(const StreamConfig& stream_config,
                 std::vector<float*>* frame,
                 std::vector<float>* frame_samples) {
@@ -115,10 +26,8 @@ void SetupFrame(const StreamConfig& stream_config,
   }
 }
 
-}  // namespace
-
 void CopyVectorToAudioBuffer(const StreamConfig& stream_config,
-                             const std::vector<float>& source,
+                             rtc::ArrayView<const float> source,
                              AudioBuffer* destination) {
   std::vector<float*> input;
   std::vector<float> input_samples;
@@ -140,6 +49,19 @@ void ExtractVectorFromAudioBuffer(const StreamConfig& stream_config,
   SetupFrame(stream_config, &output, destination);
 
   source->CopyTo(stream_config, &output[0]);
+}
+
+void FillBuffer(float value, AudioBuffer& audio_buffer) {
+  for (size_t ch = 0; ch < audio_buffer.num_channels(); ++ch) {
+    FillBufferChannel(value, ch, audio_buffer);
+  }
+}
+
+void FillBufferChannel(float value, int channel, AudioBuffer& audio_buffer) {
+  RTC_CHECK_LT(channel, audio_buffer.num_channels());
+  for (size_t i = 0; i < audio_buffer.num_frames(); ++i) {
+    audio_buffer.channels()[channel][i] = value;
+  }
 }
 
 }  // namespace test

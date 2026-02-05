@@ -1,3 +1,4 @@
+
 /*
  *  Copyright (c) 2016 The WebRTC project authors. All Rights Reserved.
  *
@@ -8,57 +9,48 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef TESTS_TEST_UTILS_BITEXACTNESS_TOOLS_H_
-#define TESTS_TEST_UTILS_BITEXACTNESS_TOOLS_H_
+#ifndef MODULES_AUDIO_PROCESSING_TEST_BITEXACTNESS_TOOLS_H_
+#define MODULES_AUDIO_PROCESSING_TEST_BITEXACTNESS_TOOLS_H_
 
-#include <cmath>
-#include <cstddef>
-#include <vector>
+#include <string>
+
+#include "webrtc/api/array_view.h"
+#include "tests/test_utils/input_audio_file.h"
+#include <gtest/gtest.h>
 
 namespace webrtc {
 namespace test {
 
-// Verifies that two deinterleaved arrays are element-wise within a tolerance.
-// Returns true if all elements match within the specified error bound.
-inline bool VerifyDeinterleavedArray(size_t samples_per_channel,
-                                     size_t num_channels,
-                                     const std::vector<float>& reference,
-                                     const std::vector<float>& output,
-                                     float element_error_bound) {
-  if (reference.size() != output.size()) {
-    return false;
-  }
-  
-  if (reference.size() != samples_per_channel * num_channels) {
-    return false;
-  }
+// Returns test vector to use for the render signal in an
+// APM bitexactness test.
+std::string GetApmRenderTestVectorFileName(int sample_rate_hz);
 
-  for (size_t i = 0; i < reference.size(); ++i) {
-    if (std::abs(reference[i] - output[i]) > element_error_bound) {
-      return false;
-    }
-  }
-  return true;
-}
+// Returns test vector to use for the capture signal in an
+// APM bitexactness test.
+std::string GetApmCaptureTestVectorFileName(int sample_rate_hz);
 
-// Verifies that two interleaved arrays are element-wise within a tolerance.
-inline bool VerifyInterleavedArray(size_t length,
-                                   const std::vector<float>& reference,
-                                   const std::vector<float>& output,
-                                   float element_error_bound) {
-  if (reference.size() != output.size() || reference.size() != length) {
-    return false;
-  }
+// Extract float samples of up to two channels from a pcm file.
+void ReadFloatSamplesFromStereoFile(size_t samples_per_channel,
+                                    size_t num_channels,
+                                    InputAudioFile* stereo_pcm_file,
+                                    rtc::ArrayView<float> data);
 
-  for (size_t i = 0; i < length; ++i) {
-    if (std::abs(reference[i] - output[i]) > element_error_bound) {
-      return false;
-    }
-  }
-  return true;
-}
+// Verifies a frame against a reference and returns the results as an
+// AssertionResult.
+::testing::AssertionResult VerifyDeinterleavedArray(
+    size_t samples_per_channel,
+    size_t num_channels,
+    rtc::ArrayView<const float> reference,
+    rtc::ArrayView<const float> output,
+    float element_error_bound);
+
+// Verifies a vector against a reference and returns the results as an
+// AssertionResult.
+::testing::AssertionResult VerifyArray(rtc::ArrayView<const float> reference,
+                                       rtc::ArrayView<const float> output,
+                                       float element_error_bound);
 
 }  // namespace test
 }  // namespace webrtc
 
-#endif  // TESTS_TEST_UTILS_BITEXACTNESS_TOOLS_H_
+#endif  // MODULES_AUDIO_PROCESSING_TEST_BITEXACTNESS_TOOLS_H_
