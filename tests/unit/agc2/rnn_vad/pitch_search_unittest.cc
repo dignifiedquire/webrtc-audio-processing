@@ -14,8 +14,8 @@
 #include <vector>
 
 #include "webrtc/modules/audio_processing/agc2/cpu_features.h"
-#include "webrtc/modules/audio_processing/agc2/rnn_vad/pitch_search_internal.h"
-#include "tests/test_utils/rnn_vad_test_utils.h"
+#include "webrtc/modules/audio_processing/agc2/rnn_vad/common.h"
+#include "webrtc/modules/audio_processing/agc2/rnn_vad/test_utils.h"
 // TODO(bugs.webrtc.org/8948): Add when the issue is fixed.
 // #include "test/fpe_observer.h"
 #include <gtest/gtest.h>

@@ -12,21 +12,27 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <memory>
-#include <optional>
+#include <string>
 #include <tuple>
+#include <utility>
+#include <vector>
 
+#include "webrtc/api/array_view.h"
 #include "webrtc/api/audio/audio_processing.h"
+#include "webrtc/api/audio/builtin_audio_processing_builder.h"
+#include "webrtc/api/audio/echo_control.h"
+#include "webrtc/api/environment/environment.h"
+#include "webrtc/api/environment/environment_factory.h"
 #include "webrtc/api/make_ref_counted.h"
+#include "webrtc/api/ref_count.h"
 #include "webrtc/api/scoped_refptr.h"
-#include "tests/test_utils/audio_processing_builder_for_testing.h"
-#include "tests/test_utils/echo_canceller_test_tools.h"
-#include "tests/test_utils/echo_control_mock.h"
-#include "tests/test_utils/test_utils.h"
-#include "webrtc/rtc_base/checks.h"
+#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "webrtc/modules/audio_processing/test/echo_control_mock.h"
+#include "webrtc/modules/audio_processing/test/test_utils.h"
 #include "webrtc/rtc_base/random.h"
-#include "webrtc/rtc_base/strings/string_builder.h"
-#include "tests/test_utils/field_trial.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -38,7 +44,7 @@ using ::testing::NotNull;
 
 class MockInitialize : public AudioProcessingImpl {
  public:
-  MockInitialize() : AudioProcessingImpl() {}
+  MockInitialize() : AudioProcessingImpl(CreateEnvironment()) {}
 
   MOCK_METHOD(void, InitializeLocked, (), (override));
   void RealInitializeLocked() {
@@ -62,9 +68,10 @@ class MockEchoControlFactory : public EchoControlFactory {
   MockEchoControlFactory() : next_mock_(std::make_unique<MockEchoControl>()) {}
   // Returns a pointer to the next MockEchoControl that this factory creates.
   MockEchoControl* GetNext() const { return next_mock_.get(); }
-  std::unique_ptr<EchoControl> Create(int sample_rate_hz,
-                                      int num_render_channels,
-                                      int num_capture_channels) override {
+  std::unique_ptr<EchoControl> Create(const Environment& /* env */,
+                                      int /* sample_rate_hz */,
+                                      int /* num_render_channels */,
+                                      int /* num_capture_channels */) override {
     std::unique_ptr<EchoControl> mock = std::move(next_mock_);
     next_mock_ = std::make_unique<MockEchoControl>();
     return mock;
@@ -83,16 +90,16 @@ class TestEchoDetector : public EchoDetector {
       : analyze_render_audio_called_(false),
         last_render_audio_first_sample_(0.f) {}
   ~TestEchoDetector() override = default;
-  void AnalyzeRenderAudio(rtc::ArrayView<const float> render_audio) override {
+  void AnalyzeRenderAudio(ArrayView<const float> render_audio) override {
     last_render_audio_first_sample_ = render_audio[0];
     analyze_render_audio_called_ = true;
   }
-  void AnalyzeCaptureAudio(rtc::ArrayView<const float> capture_audio) override {
-  }
-  void Initialize(int capture_sample_rate_hz,
-                  int num_capture_channels,
-                  int render_sample_rate_hz,
-                  int num_render_channels) override {}
+  void AnalyzeCaptureAudio(
+      ArrayView<const float> /* capture_audio */) override {}
+  void Initialize(int /* capture_sample_rate_hz */,
+                  int /* num_capture_channels */,
+                  int /* render_sample_rate_hz */,
+                  int /* num_render_channels */) override {}
   EchoDetector::Metrics GetMetrics() const override { return {}; }
   // Returns true if AnalyzeRenderAudio() has been called at least once.
   bool analyze_render_audio_called() const {
@@ -114,18 +121,18 @@ class TestEchoDetector : public EchoDetector {
 class TestRenderPreProcessor : public CustomProcessing {
  public:
   TestRenderPreProcessor() = default;
-  ~TestRenderPreProcessor() = default;
-  void Initialize(int sample_rate_hz, int num_channels) override {}
+  ~TestRenderPreProcessor() override = default;
+  void Initialize(int /* sample_rate_hz */, int /* num_channels */) override {}
   void Process(AudioBuffer* audio) override {
     for (size_t k = 0; k < audio->num_channels(); ++k) {
-      rtc::ArrayView<float> channel_view(audio->channels()[k],
-                                         audio->num_frames());
+      ArrayView<float> channel_view(audio->channels()[k], audio->num_frames());
       std::transform(channel_view.begin(), channel_view.end(),
                      channel_view.begin(), ProcessSample);
     }
   }
   std::string ToString() const override { return "TestRenderPreProcessor"; }
-  void SetRuntimeSetting(AudioProcessing::RuntimeSetting setting) override {}
+  void SetRuntimeSetting(
+      AudioProcessing::RuntimeSetting /* setting */) override {}
   // Modifies a sample. This member is used in Process() to modify a frame and
   // it is publicly visible to enable tests.
   static constexpr float ProcessSample(float x) { return 2.f * x; }
@@ -167,9 +174,10 @@ TEST(AudioProcessingImplTest, AudioParameterChangeTriggersInit) {
   EXPECT_CALL(mock, InitializeLocked).Times(1);
   mock.Initialize();
 
-  constexpr size_t kMaxSampleRateHz = 32000;
-  constexpr size_t kMaxNumChannels = 2;
-  std::array<int16_t, kMaxNumChannels * kMaxSampleRateHz / 100> frame;
+  constexpr size_t kMaxTestedSampleRateHz = 32000;
+  constexpr size_t kMaxTestedNumChannels = 2;
+  std::array<int16_t, kMaxTestedNumChannels * kMaxTestedSampleRateHz / 100>
+      frame;
   frame.fill(0);
   StreamConfig config(16000, 1);
   // Call with the default parameters; there should be an init.
@@ -198,9 +206,9 @@ TEST(AudioProcessingImplTest, AudioParameterChangeTriggersInit) {
 }
 
 TEST(AudioProcessingImplTest, UpdateCapturePreGainRuntimeSetting) {
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting().Create();
-  webrtc::AudioProcessing::Config apm_config;
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder().Build(CreateEnvironment());
+  AudioProcessing::Config apm_config;
   apm_config.pre_amplifier.enabled = true;
   apm_config.pre_amplifier.fixed_gain_factor = 1.f;
   apm->ApplyConfig(apm_config);
@@ -231,9 +239,9 @@ TEST(AudioProcessingImplTest, UpdateCapturePreGainRuntimeSetting) {
 
 TEST(AudioProcessingImplTest,
      LevelAdjustmentUpdateCapturePreGainRuntimeSetting) {
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting().Create();
-  webrtc::AudioProcessing::Config apm_config;
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder().Build(CreateEnvironment());
+  AudioProcessing::Config apm_config;
   apm_config.capture_level_adjustment.enabled = true;
   apm_config.capture_level_adjustment.pre_gain_factor = 1.f;
   apm->ApplyConfig(apm_config);
@@ -264,9 +272,9 @@ TEST(AudioProcessingImplTest,
 
 TEST(AudioProcessingImplTest,
      LevelAdjustmentUpdateCapturePostGainRuntimeSetting) {
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting().Create();
-  webrtc::AudioProcessing::Config apm_config;
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder().Build(CreateEnvironment());
+  AudioProcessing::Config apm_config;
   apm_config.capture_level_adjustment.enabled = true;
   apm_config.capture_level_adjustment.post_gain_factor = 1.f;
   apm->ApplyConfig(apm_config);
@@ -302,10 +310,10 @@ TEST(AudioProcessingImplTest, EchoControllerObservesSetCaptureUsageChange) {
   const MockEchoControlFactory* echo_control_factory_ptr =
       echo_control_factory.get();
 
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting()
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder()
           .SetEchoControlFactory(std::move(echo_control_factory))
-          .Create();
+          .Build(CreateEnvironment());
 
   constexpr int16_t kAudioLevel = 10000;
   constexpr int kSampleRateHz = 48000;
@@ -384,12 +392,12 @@ TEST(AudioProcessingImplTest,
   auto echo_control_factory = std::make_unique<MockEchoControlFactory>();
   const auto* echo_control_factory_ptr = echo_control_factory.get();
 
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting()
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder()
           .SetEchoControlFactory(std::move(echo_control_factory))
-          .Create();
+          .Build(CreateEnvironment());
   // Disable AGC.
-  webrtc::AudioProcessing::Config apm_config;
+  AudioProcessing::Config apm_config;
   apm_config.gain_controller1.enabled = false;
   apm_config.gain_controller2.enabled = false;
   apm_config.pre_amplifier.enabled = true;
@@ -427,12 +435,12 @@ TEST(AudioProcessingImplTest,
   auto echo_control_factory = std::make_unique<MockEchoControlFactory>();
   const auto* echo_control_factory_ptr = echo_control_factory.get();
 
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting()
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder()
           .SetEchoControlFactory(std::move(echo_control_factory))
-          .Create();
+          .Build(CreateEnvironment());
   // Disable AGC.
-  webrtc::AudioProcessing::Config apm_config;
+  AudioProcessing::Config apm_config;
   apm_config.gain_controller1.enabled = false;
   apm_config.gain_controller2.enabled = false;
   apm_config.capture_level_adjustment.enabled = true;
@@ -470,11 +478,11 @@ TEST(AudioProcessingImplTest,
   auto echo_control_factory = std::make_unique<MockEchoControlFactory>();
   const auto* echo_control_factory_ptr = echo_control_factory.get();
 
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting()
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder()
           .SetEchoControlFactory(std::move(echo_control_factory))
-          .Create();
-  webrtc::AudioProcessing::Config apm_config;
+          .Build(CreateEnvironment());
+  AudioProcessing::Config apm_config;
   // Enable AGC1.
   apm_config.gain_controller1.enabled = true;
   apm_config.gain_controller1.analog_gain_controller.enabled = true;
@@ -525,12 +533,12 @@ TEST(AudioProcessingImplTest, EchoControllerObservesPlayoutVolumeChange) {
   auto echo_control_factory = std::make_unique<MockEchoControlFactory>();
   const auto* echo_control_factory_ptr = echo_control_factory.get();
 
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting()
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder()
           .SetEchoControlFactory(std::move(echo_control_factory))
-          .Create();
+          .Build(CreateEnvironment());
   // Disable AGC.
-  webrtc::AudioProcessing::Config apm_config;
+  AudioProcessing::Config apm_config;
   apm_config.gain_controller1.enabled = false;
   apm_config.gain_controller2.enabled = false;
   apm->ApplyConfig(apm_config);
@@ -578,16 +586,16 @@ TEST(AudioProcessingImplTest, EchoControllerObservesPlayoutVolumeChange) {
 TEST(AudioProcessingImplTest, RenderPreProcessorBeforeEchoDetector) {
   // Make sure that signal changes caused by a render pre-processing sub-module
   // take place before any echo detector analysis.
-  auto test_echo_detector = rtc::make_ref_counted<TestEchoDetector>();
+  auto test_echo_detector = make_ref_counted<TestEchoDetector>();
   std::unique_ptr<CustomProcessing> test_render_pre_processor(
       new TestRenderPreProcessor());
   // Create APM injecting the test echo detector and render pre-processor.
-  rtc::scoped_refptr<AudioProcessing> apm =
-      AudioProcessingBuilderForTesting()
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder()
           .SetEchoDetector(test_echo_detector)
           .SetRenderPreProcessing(std::move(test_render_pre_processor))
-          .Create();
-  webrtc::AudioProcessing::Config apm_config;
+          .Build(CreateEnvironment());
+  AudioProcessing::Config apm_config;
   apm_config.pre_amplifier.enabled = true;
   apm->ApplyConfig(apm_config);
 
@@ -639,10 +647,10 @@ class StartupInputVolumeParameterizedTest
 // is never modified.
 TEST_P(StartupInputVolumeParameterizedTest,
        WithNoInputVolumeControllerStartupVolumeNotModified) {
-  webrtc::AudioProcessing::Config config;
+  AudioProcessing::Config config;
   config.gain_controller1.enabled = false;
   config.gain_controller2.enabled = false;
-  auto apm = AudioProcessingBuilder().SetConfig(config).Create();
+  auto apm = BuiltinAudioProcessingBuilder(config).Build(CreateEnvironment());
 
   int startup_volume = GetParam();
   int recommended_volume = ProcessInputVolume(
@@ -658,10 +666,10 @@ INSTANTIATE_TEST_SUITE_P(AudioProcessingImplTest,
 // volume always matches the applied one.
 TEST(AudioProcessingImplTest,
      WithNoInputVolumeControllerAppliedAndRecommendedVolumesMatch) {
-  webrtc::AudioProcessing::Config config;
+  AudioProcessing::Config config;
   config.gain_controller1.enabled = false;
   config.gain_controller2.enabled = false;
-  auto apm = AudioProcessingBuilder().SetConfig(config).Create();
+  auto apm = BuiltinAudioProcessingBuilder(config).Build(CreateEnvironment());
 
   Random rand_gen(42);
   for (int i = 0; i < 32; ++i) {
@@ -706,7 +714,8 @@ class ApmInputVolumeControllerParametrizedTest
 TEST_P(ApmInputVolumeControllerParametrizedTest,
        EnforceMinInputVolumeAtStartupWithZeroVolume) {
   const StreamConfig stream_config(sample_rate_hz(), num_channels());
-  auto apm = AudioProcessingBuilder().SetConfig(GetConfig()).Create();
+  auto apm =
+      BuiltinAudioProcessingBuilder(GetConfig()).Build(CreateEnvironment());
 
   apm->set_stream_analog_level(0);
   apm->ProcessStream(channel_pointers(), stream_config, stream_config,
@@ -717,7 +726,8 @@ TEST_P(ApmInputVolumeControllerParametrizedTest,
 TEST_P(ApmInputVolumeControllerParametrizedTest,
        EnforceMinInputVolumeAtStartupWithNonZeroVolume) {
   const StreamConfig stream_config(sample_rate_hz(), num_channels());
-  auto apm = AudioProcessingBuilder().SetConfig(GetConfig()).Create();
+  auto apm =
+      BuiltinAudioProcessingBuilder(GetConfig()).Build(CreateEnvironment());
 
   constexpr int kStartupVolume = 3;
   apm->set_stream_analog_level(kStartupVolume);
@@ -735,7 +745,8 @@ TEST_P(ApmInputVolumeControllerParametrizedTest,
     GTEST_SKIP() << "Does not apply to AGC1";
   }
   const StreamConfig stream_config(sample_rate_hz(), num_channels());
-  auto apm = AudioProcessingBuilder().SetConfig(GetConfig()).Create();
+  auto apm =
+      BuiltinAudioProcessingBuilder(GetConfig()).Build(CreateEnvironment());
 
   apm->set_stream_analog_level(20);
   apm->ProcessStream(channel_pointers(), stream_config, stream_config,
@@ -750,7 +761,8 @@ TEST_P(ApmInputVolumeControllerParametrizedTest,
 TEST_P(ApmInputVolumeControllerParametrizedTest,
        DoNotEnforceMinInputVolumeAtStartupWithHighVolume) {
   const StreamConfig stream_config(sample_rate_hz(), num_channels());
-  auto apm = AudioProcessingBuilder().SetConfig(GetConfig()).Create();
+  auto apm =
+      BuiltinAudioProcessingBuilder(GetConfig()).Build(CreateEnvironment());
 
   constexpr int kStartupVolume = 200;
   apm->set_stream_analog_level(kStartupVolume);
@@ -762,7 +774,8 @@ TEST_P(ApmInputVolumeControllerParametrizedTest,
 TEST_P(ApmInputVolumeControllerParametrizedTest,
        DoNotEnforceMinInputVolumeAfterManualVolumeAdjustmentToZero) {
   const StreamConfig stream_config(sample_rate_hz(), num_channels());
-  auto apm = AudioProcessingBuilder().SetConfig(GetConfig()).Create();
+  auto apm =
+      BuiltinAudioProcessingBuilder(GetConfig()).Build(CreateEnvironment());
 
   apm->set_stream_analog_level(100);
   apm->ProcessStream(channel_pointers(), stream_config, stream_config,
@@ -800,10 +813,10 @@ INSTANTIATE_TEST_SUITE_P(
 // active, the recommended volume must always be the applied volume.
 TEST(AudioProcessingImplTest,
      RecommendAppliedInputVolumeWithNoAgcWithNoEmulation) {
-  auto apm = AudioProcessingBuilder()
-                 .SetConfig({.capture_level_adjustment = {.enabled = false},
-                             .gain_controller1 = {.enabled = false}})
-                 .Create();
+  auto apm = BuiltinAudioProcessingBuilder(
+                 {.capture_level_adjustment = {.enabled = false},
+                  .gain_controller1 = {.enabled = false}})
+                 .Build(CreateEnvironment());
 
   constexpr int kOneFrame = 1;
   EXPECT_EQ(ProcessInputVolume(*apm, kOneFrame, /*initial_volume=*/123), 123);
@@ -817,14 +830,13 @@ TEST(AudioProcessingImplTest,
 // TODO(bugs.webrtc.org/14581): Enable when APM fixed to let this test pass.
 TEST(AudioProcessingImplTest,
      DISABLED_RecommendAppliedInputVolumeWithNoAgcWithEmulation) {
-  auto apm =
-      AudioProcessingBuilder()
-          .SetConfig({.capture_level_adjustment = {.enabled = true,
-                                                   .analog_mic_gain_emulation{
-                                                       .enabled = true,
-                                                       .initial_level = 255}},
-                      .gain_controller1 = {.enabled = false}})
-          .Create();
+  auto apm = BuiltinAudioProcessingBuilder(
+                 {.capture_level_adjustment = {.enabled = true,
+                                               .analog_mic_gain_emulation{
+                                                   .enabled = true,
+                                                   .initial_level = 255}},
+                  .gain_controller1 = {.enabled = false}})
+                 .Build(CreateEnvironment());
 
   constexpr int kOneFrame = 1;
   EXPECT_EQ(ProcessInputVolume(*apm, kOneFrame, /*initial_volume=*/123), 123);
@@ -839,16 +851,15 @@ TEST(AudioProcessingImplTest,
 // TODO(bugs.webrtc.org/14581): Enable when APM fixed to let this test pass.
 TEST(AudioProcessingImplTest,
      DISABLED_RecommendAppliedInputVolumeWithAgcWithEmulation) {
-  auto apm =
-      AudioProcessingBuilder()
-          .SetConfig({.capture_level_adjustment = {.enabled = true,
-                                                   .analog_mic_gain_emulation{
-                                                       .enabled = true}},
-                      .gain_controller1 = {.enabled = true,
-                                           .analog_gain_controller{
-                                               .enabled = true,
-                                           }}})
-          .Create();
+  auto apm = BuiltinAudioProcessingBuilder(
+                 {.capture_level_adjustment = {.enabled = true,
+                                               .analog_mic_gain_emulation{
+                                                   .enabled = true}},
+                  .gain_controller1 = {.enabled = true,
+                                       .analog_gain_controller{
+                                           .enabled = true,
+                                       }}})
+                 .Build(CreateEnvironment());
 
   constexpr int kOneFrame = 1;
   EXPECT_EQ(ProcessInputVolume(*apm, kOneFrame, /*initial_volume=*/123), 123);
@@ -860,7 +871,8 @@ class Agc2ParametrizedTest
     : public ::testing::TestWithParam<AudioProcessing::Config> {};
 
 TEST_P(Agc2ParametrizedTest, ProcessSucceedsWhenOneAgcEnabled) {
-  auto apm = AudioProcessingBuilder().SetConfig(GetParam()).Create();
+  auto apm =
+      BuiltinAudioProcessingBuilder(GetParam()).Build(CreateEnvironment());
   constexpr int kSampleRateHz = 48000;
   constexpr int kNumChannels = 1;
   std::array<float, kSampleRateHz / 100> buffer;
@@ -882,16 +894,17 @@ TEST_P(Agc2ParametrizedTest, ProcessSucceedsWhenOneAgcEnabled) {
 
 TEST_P(Agc2ParametrizedTest,
        BitExactWithAndWithoutTransientSuppressionEnabledInConfig) {
+  const Environment env = CreateEnvironment();
   // Enable transient suppression in the config (expect no effect).
   auto config = GetParam();
   config.transient_suppression.enabled = true;
-  auto apm = AudioProcessingBuilder().SetConfig(config).Create();
+  auto apm = BuiltinAudioProcessingBuilder(config).Build(env);
   ASSERT_EQ(apm->Initialize(), AudioProcessing::kNoError);
   // Disable transient suppression in the config.
   auto config_reference = GetParam();
   config_reference.transient_suppression.enabled = false;
   auto apm_reference =
-      AudioProcessingBuilder().SetConfig(config_reference).Create();
+      BuiltinAudioProcessingBuilder(config_reference).Build(env);
   ASSERT_EQ(apm_reference->Initialize(), AudioProcessing::kNoError);
 
   constexpr int kSampleRateHz = 16000;
@@ -958,5 +971,28 @@ INSTANTIATE_TEST_SUITE_P(
             .gain_controller2 = {.enabled = true,
                                  .input_volume_controller = {.enabled = true},
                                  .adaptive_digital = {.enabled = true}}}));
+
+TEST(AudioProcessingImplTest, DoesNotFailProcessReverseStreamAfterApplyConfig) {
+  AudioProcessing::Config apm_config;
+  apm_config.echo_canceller.enabled = true;
+  constexpr int kSampleRateHz = 48000;
+  constexpr size_t kNumChannels = 1;
+  std::array<int16_t, kNumChannels * kSampleRateHz / 100> frame;
+  StreamConfig stream_config(kSampleRateHz, kNumChannels);
+
+  scoped_refptr<AudioProcessing> apm =
+      BuiltinAudioProcessingBuilder().Build(CreateEnvironment());
+  apm->Initialize({{
+      StreamConfig(16000, /*num_channels=*/1),
+      StreamConfig(16000, /*num_channels=*/1),
+      stream_config,
+      stream_config,
+  }});
+  apm->ApplyConfig(apm_config);
+  frame.fill(0);
+  ASSERT_EQ(AudioProcessing::Error::kNoError,
+            apm->ProcessReverseStream(frame.data(), stream_config,
+                                      stream_config, frame.data()));
+}
 
 }  // namespace webrtc

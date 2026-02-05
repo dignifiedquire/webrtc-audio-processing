@@ -7,13 +7,18 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
+#include <cstddef>
+#include <cstdint>
 #include <vector>
 
 #include "webrtc/api/array_view.h"
+#include "webrtc/api/audio/audio_processing.h"
+#include "webrtc/modules/audio_coding/neteq/tools/input_audio_file.h"
 #include "webrtc/modules/audio_processing/audio_buffer.h"
 #include "webrtc/modules/audio_processing/echo_control_mobile_impl.h"
-#include "tests/test_utils/audio_buffer_tools.h"
-#include "tests/test_utils/bitexactness_tools.h"
+#include "webrtc/modules/audio_processing/test/audio_buffer_tools.h"
+#include "webrtc/modules/audio_processing/test/bitexactness_tools.h"
+#include "webrtc/rtc_base/checks.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {
@@ -21,7 +26,7 @@ namespace {
 
 // TODO(peah): Increase the number of frames to proces when the issue of
 // non repeatable test results have been found.
-const int kNumFramesToProcess = 200;
+constexpr int kNumFramesToProcess = 200;
 
 void SetupComponent(int sample_rate_hz,
                     EchoControlMobileImpl::RoutingMode routing_mode,
@@ -62,12 +67,12 @@ void RunBitexactnessTest(int sample_rate_hz,
                          int stream_delay_ms,
                          EchoControlMobileImpl::RoutingMode routing_mode,
                          bool comfort_noise_enabled,
-                         const rtc::ArrayView<const float>& output_reference) {
+                         const ArrayView<const float>& output_reference) {
   EchoControlMobileImpl echo_control_mobile;
   SetupComponent(sample_rate_hz, routing_mode, comfort_noise_enabled,
                  &echo_control_mobile);
 
-  const int samples_per_channel = rtc::CheckedDivExact(sample_rate_hz, 100);
+  const int samples_per_channel = CheckedDivExact(sample_rate_hz, 100);
   const StreamConfig render_config(sample_rate_hz, num_channels);
   AudioBuffer render_buffer(
       render_config.sample_rate_hz(), render_config.num_channels(),

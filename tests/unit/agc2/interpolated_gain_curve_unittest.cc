@@ -11,16 +11,18 @@
 #include "webrtc/modules/audio_processing/agc2/interpolated_gain_curve.h"
 
 #include <array>
+#include <cmath>
+#include <cstddef>
+#include <string>
 #include <type_traits>
 #include <vector>
 
-#include "webrtc/api/array_view.h"
 #include "webrtc/common_audio/include/audio_util.h"
 #include "webrtc/modules/audio_processing/agc2/agc2_common.h"
+#include "webrtc/modules/audio_processing/agc2/agc2_testing_common.h"
 #include "webrtc/modules/audio_processing/agc2/compute_interpolated_gain_curve.h"
 #include "webrtc/modules/audio_processing/agc2/limiter_db_gain_curve.h"
 #include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
-#include "webrtc/rtc_base/checks.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {

@@ -11,6 +11,7 @@
 #include "webrtc/modules/audio_processing/agc2/adaptive_digital_gain_controller.h"
 
 #include <algorithm>
+#include <cmath>
 #include <memory>
 
 #include "webrtc/api/audio/audio_processing.h"

@@ -10,16 +10,19 @@
 
 #include "webrtc/common_audio/channel_buffer.h"
 
+#include <cstddef>
+
+#include "webrtc/rtc_base/checks.h"
 #include <gtest/gtest.h>
-#include "tests/test_utils/rtc_expect_death.h"
+#include "test/testsupport/rtc_expect_death.h"
 
 namespace webrtc {
 
 namespace {
 
-const size_t kNumFrames = 480u;
-const size_t kStereo = 2u;
-const size_t kMono = 1u;
+constexpr size_t kNumFrames = 480u;
+constexpr size_t kStereo = 2u;
+constexpr size_t kMono = 1u;
 
 void ExpectNumChannels(const IFChannelBuffer& ifchb, size_t num_channels) {
   EXPECT_EQ(ifchb.ibuf_const()->num_channels(), num_channels);

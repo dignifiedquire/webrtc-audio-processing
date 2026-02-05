@@ -10,6 +10,9 @@
 
 #include "webrtc/modules/audio_processing/agc2/saturation_protector.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include "webrtc/modules/audio_processing/agc2/agc2_common.h"
 #include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
 #include <gtest/gtest.h>

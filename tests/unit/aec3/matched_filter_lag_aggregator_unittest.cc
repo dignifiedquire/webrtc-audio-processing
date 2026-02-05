@@ -10,14 +10,16 @@
 
 #include "webrtc/modules/audio_processing/aec3/matched_filter_lag_aggregator.h"
 
-#include <sstream>
-#include <string>
+#include <algorithm>
+#include <cstddef>
+#include <optional>
 #include <vector>
 
-#include "webrtc/api/array_view.h"
 #include "webrtc/api/audio/echo_canceller3_config.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
+#include "webrtc/modules/audio_processing/aec3/delay_estimate.h"
+#include "webrtc/modules/audio_processing/aec3/matched_filter.h"
 #include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
+#include "webrtc/rtc_base/checks.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {

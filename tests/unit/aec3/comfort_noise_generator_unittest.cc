@@ -10,14 +10,16 @@
 
 #include "webrtc/modules/audio_processing/aec3/comfort_noise_generator.h"
 
-#include <algorithm>
+#include <array>
+#include <cstddef>
 #include <numeric>
+#include <vector>
 
 #include "webrtc/api/audio/echo_canceller3_config.h"
+#include "webrtc/api/environment/environment_factory.h"
+#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
 #include "webrtc/modules/audio_processing/aec3/aec_state.h"
-#include "webrtc/rtc_base/random.h"
-#include "webrtc/rtc_base/system/arch.h"
-#include "webrtc/system_wrappers/include/cpu_features_wrapper.h"
+#include "webrtc/modules/audio_processing/aec3/fft_data.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {
@@ -36,7 +38,7 @@ TEST(ComfortNoiseGenerator, CorrectLevel) {
   constexpr size_t kNumChannels = 5;
   EchoCanceller3Config config;
   ComfortNoiseGenerator cng(config, DetectOptimization(), kNumChannels);
-  AecState aec_state(config, kNumChannels);
+  AecState aec_state(CreateEnvironment(), config, kNumChannels);
 
   std::vector<std::array<float, kFftLengthBy2Plus1>> N2(kNumChannels);
   std::vector<FftData> n_lower(kNumChannels);

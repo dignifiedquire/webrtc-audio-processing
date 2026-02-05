@@ -10,10 +10,10 @@
 
 #include "webrtc/modules/audio_processing/aec3/render_buffer.h"
 
-#include <algorithm>
-#include <functional>
-#include <vector>
-
+#include "webrtc/modules/audio_processing/aec3/block_buffer.h"
+#include "webrtc/modules/audio_processing/aec3/fft_buffer.h"
+#include "webrtc/modules/audio_processing/aec3/spectrum_buffer.h"
+#include "webrtc/rtc_base/checks.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {

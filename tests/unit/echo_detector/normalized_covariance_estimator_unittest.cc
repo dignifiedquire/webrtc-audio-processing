@@ -11,6 +11,8 @@
 
 #include "webrtc/modules/audio_processing/echo_detector/normalized_covariance_estimator.h"
 
+#include <cstddef>
+
 #include <gtest/gtest.h>
 
 namespace webrtc {

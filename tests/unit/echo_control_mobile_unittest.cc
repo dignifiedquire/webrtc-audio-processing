@@ -9,7 +9,6 @@
  */
 
 #include <array>
-#include <vector>
 
 #include "webrtc/api/audio/audio_processing.h"
 #include "webrtc/modules/audio_processing/echo_control_mobile_impl.h"

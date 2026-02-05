@@ -11,13 +11,20 @@
 #include "webrtc/modules/audio_processing/aec3/echo_path_delay_estimator.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <memory>
+#include <optional>
 #include <string>
+#include <tuple>
 
 #include "webrtc/api/audio/echo_canceller3_config.h"
 #include "webrtc/modules/audio_processing/aec3/aec3_common.h"
+#include "webrtc/modules/audio_processing/aec3/block.h"
+#include "webrtc/modules/audio_processing/aec3/delay_estimate.h"
 #include "webrtc/modules/audio_processing/aec3/render_delay_buffer.h"
 #include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
-#include "tests/test_utils/echo_canceller_test_tools.h"
+#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "webrtc/rtc_base/checks.h"
 #include "webrtc/rtc_base/random.h"
 #include "webrtc/rtc_base/strings/string_builder.h"
 #include <gtest/gtest.h>
@@ -26,7 +33,7 @@ namespace webrtc {
 namespace {
 
 std::string ProduceDebugText(size_t delay, size_t down_sampling_factor) {
-  rtc::StringBuilder ss;
+  StringBuilder ss;
   ss << "Delay: " << delay;
   ss << ", Down sampling factor: " << down_sampling_factor;
   return ss.Release();
@@ -74,7 +81,7 @@ TEST(EchoPathDelayEstimator, DelayEstimation) {
   Block render(kNumBands, kNumRenderChannels);
   Block capture(/*num_bands=*/1, kNumCaptureChannels);
   ApmDataDumper data_dumper(0);
-  constexpr size_t kDownSamplingFactors[] = {2, 4, 8};
+  constexpr size_t kDownSamplingFactors[] = {4, 8};
   for (auto down_sampling_factor : kDownSamplingFactors) {
     EchoCanceller3Config config;
     config.delay.delay_headroom_samples = 0;

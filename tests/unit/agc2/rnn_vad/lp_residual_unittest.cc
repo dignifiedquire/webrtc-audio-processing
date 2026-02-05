@@ -15,8 +15,7 @@
 #include <vector>
 
 #include "webrtc/modules/audio_processing/agc2/rnn_vad/common.h"
-#include "webrtc/rtc_base/system/arch.h"
-#include "tests/test_utils/rnn_vad_test_utils.h"
+#include "webrtc/modules/audio_processing/agc2/rnn_vad/test_utils.h"
 // TODO(bugs.webrtc.org/8948): Add when the issue is fixed.
 // #include "test/fpe_observer.h"
 #include <gtest/gtest.h>
@@ -24,15 +23,6 @@
 namespace webrtc {
 namespace rnn_vad {
 namespace {
-
-// Bit-exact tolerance: use strict tolerance only on x86_64 Linux where the
-// reference data was generated. Other platforms use relaxed tolerance due to
-// floating-point precision differences in LPC/LP residual computations.
-#if defined(WEBRTC_ARCH_X86_64) && defined(__linux__)
-constexpr float kLpResidualTolerance = kFloatMin;
-#else
-constexpr float kLpResidualTolerance = 0.1f;
-#endif
 
 // Checks that the LP residual can be computed on an empty frame.
 TEST(RnnVadTest, LpResidualOfEmptyFrame) {
@@ -80,7 +70,7 @@ TEST(RnnVadTest, LpResidualPipelineBitExactness) {
     if (i % 20 == 0) {
       ComputeAndPostProcessLpcCoefficients(pitch_buffer_24kHz, lpc);
       ComputeLpResidual(lpc, pitch_buffer_24kHz, computed_lp_residual);
-      ExpectNearAbsolute(expected_lp_residual, computed_lp_residual, kLpResidualTolerance);
+      ExpectNearAbsolute(expected_lp_residual, computed_lp_residual, kFloatMin);
     }
   }
 }

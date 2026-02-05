@@ -11,7 +11,12 @@
 #include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
 
+#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
+#include "webrtc/modules/audio_processing/aec3/fft_data.h"
+#include "webrtc/rtc_base/checks.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

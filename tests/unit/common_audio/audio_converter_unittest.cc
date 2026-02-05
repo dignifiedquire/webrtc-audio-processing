@@ -12,12 +12,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <cstdio>
 #include <memory>
 #include <vector>
 
 #include "webrtc/common_audio/channel_buffer.h"
 #include "webrtc/common_audio/resampler/push_sinc_resampler.h"
-#include "webrtc/rtc_base/arraysize.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {

@@ -10,6 +10,7 @@
 
 #include "webrtc/modules/audio_processing/aec3/config_selector.h"
 
+#include <cstddef>
 #include <optional>
 #include <tuple>
 

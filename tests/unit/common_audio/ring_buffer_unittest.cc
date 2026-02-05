@@ -10,10 +10,10 @@
 
 #include "webrtc/common_audio/ring_buffer.h"
 
-#include <stdlib.h>
-#include <time.h>
-
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
 #include <memory>
 
 #include <gtest/gtest.h>

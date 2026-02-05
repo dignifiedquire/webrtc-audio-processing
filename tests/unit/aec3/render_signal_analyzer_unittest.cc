@@ -10,18 +10,23 @@
 
 #include "webrtc/modules/audio_processing/aec3/render_signal_analyzer.h"
 
-#include <math.h>
-
+#include <algorithm>
 #include <array>
 #include <cmath>
-#include <vector>
+#include <cstddef>
+#include <memory>
+#include <numbers>
+#include <optional>
+#include <string>
 
 #include "webrtc/api/array_view.h"
+#include "webrtc/api/audio/echo_canceller3_config.h"
 #include "webrtc/modules/audio_processing/aec3/aec3_common.h"
 #include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
-#include "webrtc/modules/audio_processing/aec3/fft_data.h"
+#include "webrtc/modules/audio_processing/aec3/block.h"
 #include "webrtc/modules/audio_processing/aec3/render_delay_buffer.h"
-#include "tests/test_utils/echo_canceller_test_tools.h"
+#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "webrtc/rtc_base/checks.h"
 #include "webrtc/rtc_base/random.h"
 #include "webrtc/rtc_base/strings/string_builder.h"
 #include <gtest/gtest.h>
@@ -29,7 +34,7 @@
 namespace webrtc {
 namespace {
 
-constexpr float kPi = 3.141592f;
+constexpr float kPi = std::numbers::pi_v<float>;
 
 void ProduceSinusoidInNoise(int sample_rate_hz,
                             size_t sinusoid_channel,
@@ -107,7 +112,7 @@ void RunNarrowBandDetectionTest(size_t num_channels) {
 }
 
 std::string ProduceDebugText(size_t num_channels) {
-  rtc::StringBuilder ss;
+  StringBuilder ss;
   ss << "number of channels: " << num_channels;
   return ss.Release();
 }

@@ -10,6 +10,8 @@
 
 #include "webrtc/modules/audio_processing/echo_detector/circular_buffer.h"
 
+#include <optional>
+
 #include <gtest/gtest.h>
 
 namespace webrtc {

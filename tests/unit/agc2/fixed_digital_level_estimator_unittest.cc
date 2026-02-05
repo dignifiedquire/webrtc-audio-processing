@@ -10,6 +10,7 @@
 
 #include "webrtc/modules/audio_processing/agc2/fixed_digital_level_estimator.h"
 
+#include <cstddef>
 #include <limits>
 
 #include "webrtc/api/audio/audio_frame.h"
@@ -18,6 +19,7 @@
 #include "webrtc/modules/audio_processing/agc2/agc2_testing_common.h"
 #include "webrtc/modules/audio_processing/agc2/vector_float_frame.h"
 #include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
+#include "webrtc/rtc_base/checks.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {

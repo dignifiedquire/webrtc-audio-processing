@@ -10,6 +10,8 @@
 
 #include "webrtc/modules/audio_processing/agc2/agc2_testing_common.h"
 
+#include <vector>
+
 #include <gtest/gtest.h>
 
 namespace webrtc {

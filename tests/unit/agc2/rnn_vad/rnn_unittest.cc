@@ -10,6 +10,8 @@
 
 #include "webrtc/modules/audio_processing/agc2/rnn_vad/rnn.h"
 
+#include <array>
+
 #include "webrtc/api/array_view.h"
 #include "webrtc/modules/audio_processing/agc2/cpu_features.h"
 #include "webrtc/modules/audio_processing/agc2/rnn_vad/common.h"

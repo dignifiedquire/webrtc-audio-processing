@@ -13,6 +13,7 @@
 #include <optional>
 
 #include "webrtc/modules/audio_processing/aec3/aec3_common.h"
+#include "webrtc/modules/audio_processing/aec3/clockdrift_detector.h"
 #include "webrtc/system_wrappers/include/metrics.h"
 #include <gtest/gtest.h>
 

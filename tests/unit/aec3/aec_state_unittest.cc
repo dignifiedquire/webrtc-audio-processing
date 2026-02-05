@@ -10,10 +10,24 @@
 
 #include "webrtc/modules/audio_processing/aec3/aec_state.h"
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <memory>
+#include <optional>
+#include <tuple>
+#include <vector>
+
+#include "webrtc/api/audio/echo_canceller3_config.h"
+#include "webrtc/api/environment/environment_factory.h"
+#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
 #include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
+#include "webrtc/modules/audio_processing/aec3/block.h"
+#include "webrtc/modules/audio_processing/aec3/delay_estimate.h"
+#include "webrtc/modules/audio_processing/aec3/echo_path_variability.h"
 #include "webrtc/modules/audio_processing/aec3/render_delay_buffer.h"
+#include "webrtc/modules/audio_processing/aec3/subtractor_output.h"
 #include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
-#include "webrtc/rtc_base/strings/string_builder.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {
@@ -27,7 +41,7 @@ void RunNormalUsageTest(size_t num_render_channels,
   constexpr size_t kNumBands = NumBandsForRate(kSampleRateHz);
   ApmDataDumper data_dumper(42);
   EchoCanceller3Config config;
-  AecState state(config, num_capture_channels);
+  AecState state(CreateEnvironment(), config, num_capture_channels);
   std::optional<DelayEstimate> delay_estimate =
       DelayEstimate(DelayEstimate::Quality::kRefined, 10);
   std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
@@ -244,7 +258,7 @@ TEST(AecState, ConvergedFilterDelay) {
   constexpr int kFilterLengthBlocks = 10;
   constexpr size_t kNumCaptureChannels = 1;
   EchoCanceller3Config config;
-  AecState state(config, kNumCaptureChannels);
+  AecState state(CreateEnvironment(), config, kNumCaptureChannels);
   std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
       RenderDelayBuffer::Create(config, 48000, 1));
   std::optional<DelayEstimate> delay_estimate;

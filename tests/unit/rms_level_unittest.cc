@@ -7,30 +7,26 @@
  *  in the file PATENTS.  All contributing project authors may
  *  be found in the AUTHORS file in the root of the source tree.
  */
-#include "modules/audio_processing/rms_level.h"
+#include "webrtc/modules/audio_processing/rms_level.h"
 
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <numbers>
 #include <vector>
 
-#include "api/array_view.h"
-#include "rtc_base/checks.h"
-#include "rtc_base/numerics/safe_conversions.h"
-
+#include "webrtc/api/array_view.h"
+#include "webrtc/rtc_base/checks.h"
+#include "webrtc/rtc_base/numerics/safe_conversions.h"
 #include <gtest/gtest.h>
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 
 namespace webrtc {
 namespace {
 constexpr int kSampleRateHz = 48000;
 constexpr size_t kBlockSizeSamples = kSampleRateHz / 100;
 
-std::unique_ptr<RmsLevel> RunTest(rtc::ArrayView<const int16_t> input) {
+std::unique_ptr<RmsLevel> RunTest(ArrayView<const int16_t> input) {
   std::unique_ptr<RmsLevel> level(new RmsLevel);
   for (size_t n = 0; n + kBlockSizeSamples <= input.size();
        n += kBlockSizeSamples) {
@@ -39,7 +35,7 @@ std::unique_ptr<RmsLevel> RunTest(rtc::ArrayView<const int16_t> input) {
   return level;
 }
 
-std::unique_ptr<RmsLevel> RunTest(rtc::ArrayView<const float> input) {
+std::unique_ptr<RmsLevel> RunTest(ArrayView<const float> input) {
   std::unique_ptr<RmsLevel> level(new RmsLevel);
   for (size_t n = 0; n + kBlockSizeSamples <= input.size();
        n += kBlockSizeSamples) {
@@ -53,9 +49,9 @@ std::vector<int16_t> CreateInt16Sinusoid(int frequency_hz,
                                          size_t num_samples) {
   std::vector<int16_t> x(num_samples);
   for (size_t n = 0; n < num_samples; ++n) {
-    x[n] = rtc::saturated_cast<int16_t>(
+    x[n] = saturated_cast<int16_t>(
         amplitude *
-        std::sin(2 * M_PI * n * frequency_hz / kSampleRateHz));
+        std::sin(2 * std::numbers::pi * n * frequency_hz / kSampleRateHz));
   }
   return x;
 }
@@ -74,7 +70,7 @@ std::vector<float> CreateFloatSinusoid(int frequency_hz,
 
 }  // namespace
 
-TEST(RmsLevelTest, VerifyIdentityBetweenFloatAndFix) {
+TEST(RmsLevelTest, VerifyIndentityBetweenFloatAndFix) {
   auto x_f = CreateFloatSinusoid(1000, INT16_MAX, kSampleRateHz);
   auto x_i = CreateFloatSinusoid(1000, INT16_MAX, kSampleRateHz);
   auto level_f = RunTest(x_f);
@@ -149,7 +145,8 @@ TEST(RmsLevelTest, Reset) {
 TEST(RmsLevelTest, ProcessMuted) {
   auto x = CreateInt16Sinusoid(1000, INT16_MAX, kSampleRateHz);
   auto level = RunTest(x);
-  const size_t kBlocksPerSecond = kSampleRateHz / kBlockSizeSamples;
+  const size_t kBlocksPerSecond =
+      CheckedDivExact(static_cast<size_t>(kSampleRateHz), kBlockSizeSamples);
   for (size_t i = 0; i < kBlocksPerSecond; ++i) {
     level->AnalyzeMuted(kBlockSizeSamples);
   }
@@ -168,7 +165,7 @@ TEST(RmsLevelTest, OnlyDigitalSilenceIs127) {
   EXPECT_LT(level->Average(), 127);
 }
 
-// Inserts 1 second of half-scale sinusoid, followed by 10 ms of full-scale, and
+// Inserts 1 second of half-scale sinusoid, follwed by 10 ms of full-scale, and
 // finally 1 second of half-scale again. Expect the average to be -9 dBFS due
 // to the vast majority of the signal being half-scale, and the peak to be
 // -3 dBFS.

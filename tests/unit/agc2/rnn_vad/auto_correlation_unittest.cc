@@ -10,9 +10,12 @@
 
 #include "webrtc/modules/audio_processing/agc2/rnn_vad/auto_correlation.h"
 
+#include <algorithm>
+#include <array>
+
 #include "webrtc/modules/audio_processing/agc2/rnn_vad/common.h"
 #include "webrtc/modules/audio_processing/agc2/rnn_vad/pitch_search_internal.h"
-#include "tests/test_utils/rnn_vad_test_utils.h"
+#include "webrtc/modules/audio_processing/agc2/rnn_vad/test_utils.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {

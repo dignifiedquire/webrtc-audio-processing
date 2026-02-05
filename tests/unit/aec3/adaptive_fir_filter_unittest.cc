@@ -10,40 +10,53 @@
 
 #include "webrtc/modules/audio_processing/aec3/adaptive_fir_filter.h"
 
-// Defines WEBRTC_ARCH_X86_FAMILY, used below.
-#include <math.h>
-
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <memory>
 #include <numeric>
+#include <optional>
 #include <string>
+#include <tuple>
+#include <vector>
 
+#include "webrtc/api/array_view.h"
+#include "webrtc/api/audio/echo_canceller3_config.h"
+#include "webrtc/api/environment/environment_factory.h"
+#include "webrtc/modules/audio_processing/aec3/adaptive_fir_filter_erl.h"
+#include "webrtc/modules/audio_processing/aec3/aec3_common.h"
+#include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
+#include "webrtc/modules/audio_processing/aec3/aec_state.h"
+#include "webrtc/modules/audio_processing/aec3/block.h"
+#include "webrtc/modules/audio_processing/aec3/coarse_filter_update_gain.h"
+#include "webrtc/modules/audio_processing/aec3/delay_estimate.h"
+#include "webrtc/modules/audio_processing/aec3/echo_path_variability.h"
+#include "webrtc/modules/audio_processing/aec3/fft_data.h"
+#include "webrtc/modules/audio_processing/aec3/render_delay_buffer.h"
+#include "webrtc/modules/audio_processing/aec3/render_signal_analyzer.h"
+#include "webrtc/modules/audio_processing/aec3/subtractor_output.h"
+#include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
+#include "webrtc/modules/audio_processing/test/echo_canceller_test_tools.h"
+#include "webrtc/modules/audio_processing/utility/cascaded_biquad_filter.h"
+#include "webrtc/rtc_base/checks.h"
+#include "webrtc/rtc_base/cpu_info.h"
+#include "webrtc/rtc_base/numerics/safe_minmax.h"
+#include "webrtc/rtc_base/random.h"
+#include "webrtc/rtc_base/strings/string_builder.h"
+#include <gtest/gtest.h>
+
+// Defines WEBRTC_ARCH_X86_FAMILY, used below.
 #include "webrtc/rtc_base/system/arch.h"
 #if defined(WEBRTC_ARCH_X86_FAMILY)
 #include <emmintrin.h>
 #endif
-
-#include "webrtc/modules/audio_processing/aec3/adaptive_fir_filter_erl.h"
-#include "webrtc/modules/audio_processing/aec3/aec3_fft.h"
-#include "webrtc/modules/audio_processing/aec3/aec_state.h"
-#include "webrtc/modules/audio_processing/aec3/coarse_filter_update_gain.h"
-#include "webrtc/modules/audio_processing/aec3/render_delay_buffer.h"
-#include "webrtc/modules/audio_processing/aec3/render_signal_analyzer.h"
-#include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
-#include "tests/test_utils/echo_canceller_test_tools.h"
-#include "webrtc/modules/audio_processing/utility/cascaded_biquad_filter.h"
-#include "webrtc/rtc_base/arraysize.h"
-#include "webrtc/rtc_base/numerics/safe_minmax.h"
-#include "webrtc/rtc_base/random.h"
-#include "webrtc/rtc_base/strings/string_builder.h"
-#include "webrtc/system_wrappers/include/cpu_features_wrapper.h"
-#include <gtest/gtest.h>
 
 namespace webrtc {
 namespace aec3 {
 namespace {
 
 std::string ProduceDebugText(size_t num_render_channels, size_t delay) {
-  rtc::StringBuilder ss;
+  StringBuilder ss;
   ss << "delay: " << delay << ", ";
   ss << "num_render_channels:" << num_render_channels;
   return ss.Release();
@@ -58,12 +71,6 @@ class AdaptiveFirFilterOneTwoFourEightRenderChannels
 INSTANTIATE_TEST_SUITE_P(MultiChannel,
                          AdaptiveFirFilterOneTwoFourEightRenderChannels,
                          ::testing::Values(1, 2, 4, 8));
-
-// Tests in this suite are guarded by WEBRTC_HAS_NEON or WEBRTC_ARCH_X86_FAMILY.
-// Allow the suite to be instantiated without tests on platforms where neither
-// is defined (e.g., ARM64 without NEON optimizations explicitly enabled).
-GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(
-    AdaptiveFirFilterOneTwoFourEightRenderChannels);
 
 #if defined(WEBRTC_HAS_NEON)
 // Verifies that the optimized methods for filter adaptation are similar to
@@ -182,7 +189,7 @@ TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
   constexpr int kSampleRateHz = 48000;
   constexpr size_t kNumBands = NumBandsForRate(kSampleRateHz);
 
-  bool use_sse2 = (GetCPUInfo(kSSE2) != 0);
+  bool use_sse2 = cpu_info::Supports(cpu_info::ISA::kSSE2);
   if (use_sse2) {
     for (size_t num_partitions : {2, 5, 12, 30, 50}) {
       std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
@@ -254,7 +261,7 @@ TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
   constexpr int kSampleRateHz = 48000;
   constexpr size_t kNumBands = NumBandsForRate(kSampleRateHz);
 
-  bool use_avx2 = (GetCPUInfo(kAVX2) != 0);
+  bool use_avx2 = cpu_info::Supports(cpu_info::ISA::kAVX2);
   if (use_avx2) {
     for (size_t num_partitions : {2, 5, 12, 30, 50}) {
       std::unique_ptr<RenderDelayBuffer> render_delay_buffer(
@@ -323,7 +330,7 @@ TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
 TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
        ComputeFrequencyResponseSse2Optimization) {
   const size_t num_render_channels = GetParam();
-  bool use_sse2 = (GetCPUInfo(kSSE2) != 0);
+  bool use_sse2 = cpu_info::Supports(cpu_info::ISA::kSSE2);
   if (use_sse2) {
     for (size_t num_partitions : {2, 5, 12, 30, 50}) {
       std::vector<std::vector<FftData>> H(
@@ -358,7 +365,7 @@ TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
 TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
        ComputeFrequencyResponseAvx2Optimization) {
   const size_t num_render_channels = GetParam();
-  bool use_avx2 = (GetCPUInfo(kAVX2) != 0);
+  bool use_avx2 = cpu_info::Supports(cpu_info::ISA::kAVX2);
   if (use_avx2) {
     for (size_t num_partitions : {2, 5, 12, 30, 50}) {
       std::vector<std::vector<FftData>> H(
@@ -460,10 +467,22 @@ TEST_P(AdaptiveFirFilterMultiChannel, FilterAndAdapt) {
   EchoCanceller3Config config;
 
   if (num_render_channels == 33) {
-    config.filter.refined = {13, 0.00005f, 0.0005f, 0.0001f, 2.f, 20075344.f};
-    config.filter.coarse = {13, 0.1f, 20075344.f};
-    config.filter.refined_initial = {12, 0.005f, 0.5f, 0.001f, 2.f, 20075344.f};
-    config.filter.coarse_initial = {12, 0.7f, 20075344.f};
+    config.filter.refined = {.length_blocks = 13,
+                             .leakage_converged = 0.00005f,
+                             .leakage_diverged = 0.0005f,
+                             .error_floor = 0.0001f,
+                             .error_ceil = 2.f,
+                             .noise_gate = 20075344.f};
+    config.filter.coarse = {
+        .length_blocks = 13, .rate = 0.1f, .noise_gate = 20075344.f};
+    config.filter.refined_initial = {.length_blocks = 12,
+                                     .leakage_converged = 0.005f,
+                                     .leakage_diverged = 0.5f,
+                                     .error_floor = 0.001f,
+                                     .error_ceil = 2.f,
+                                     .noise_gate = 20075344.f};
+    config.filter.coarse_initial = {
+        .length_blocks = 12, .rate = 0.7f, .noise_gate = 20075344.f};
   }
 
   AdaptiveFirFilter filter(
@@ -488,7 +507,8 @@ TEST_P(AdaptiveFirFilterMultiChannel, FilterAndAdapt) {
   Block x(kNumBands, num_render_channels);
   std::vector<float> n(kBlockSize, 0.f);
   std::vector<float> y(kBlockSize, 0.f);
-  AecState aec_state(EchoCanceller3Config{}, num_capture_channels);
+  AecState aec_state(CreateEnvironment(), EchoCanceller3Config{},
+                     num_capture_channels);
   RenderSignalAnalyzer render_signal_analyzer(config);
   std::optional<DelayEstimate> delay_estimate;
   std::vector<float> e(kBlockSize, 0.f);
@@ -502,9 +522,10 @@ TEST_P(AdaptiveFirFilterMultiChannel, FilterAndAdapt) {
       num_capture_channels);
   std::array<float, kFftLengthBy2Plus1> E2_coarse;
   // [B,A] = butter(2,100/8000,'high')
-  constexpr CascadedBiQuadFilter::BiQuadCoefficients
-      kHighPassFilterCoefficients = {{0.97261f, -1.94523f, 0.97261f},
-                                     {-1.94448f, 0.94598f}};
+  constexpr std::array<CascadedBiQuadFilter::BiQuadCoefficients, 1>
+      kHighPassFilterCoefficients = {{
+          {.b = {0.97261f, -1.94523f, 0.97261f}, .a = {-1.94448f, 0.94598f}},
+      }};
   for (auto& Y2_ch : Y2) {
     Y2_ch.fill(0.f);
   }
@@ -525,9 +546,12 @@ TEST_P(AdaptiveFirFilterMultiChannel, FilterAndAdapt) {
         num_render_channels);
     for (size_t ch = 0; ch < num_render_channels; ++ch) {
       x_hp_filter[ch] = std::make_unique<CascadedBiQuadFilter>(
-          kHighPassFilterCoefficients, 1);
+          ArrayView<const CascadedBiQuadFilter::BiQuadCoefficients>(
+              kHighPassFilterCoefficients));
     }
-    CascadedBiQuadFilter y_hp_filter(kHighPassFilterCoefficients, 1);
+    CascadedBiQuadFilter y_hp_filter(
+        (ArrayView<const CascadedBiQuadFilter::BiQuadCoefficients>(
+            kHighPassFilterCoefficients)));
 
     SCOPED_TRACE(ProduceDebugText(num_render_channels, delay_samples));
     const size_t num_blocks_to_process =
@@ -570,7 +594,7 @@ TEST_P(AdaptiveFirFilterMultiChannel, FilterAndAdapt) {
                      e.begin(),
                      [&](float a, float b) { return a - b * kScale; });
       std::for_each(e.begin(), e.end(),
-                    [](float& a) { a = rtc::SafeClamp(a, -32768.f, 32767.f); });
+                    [](float& a) { a = SafeClamp(a, -32768.f, 32767.f); });
       fft.ZeroPaddedFft(e, Aec3Fft::Window::kRectangular, &E);
       for (auto& o : output) {
         for (size_t k = 0; k < kBlockSize; ++k) {

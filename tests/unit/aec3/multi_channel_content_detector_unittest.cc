@@ -10,6 +10,10 @@
 
 #include "webrtc/modules/audio_processing/aec3/multi_channel_content_detector.h"
 
+#include <algorithm>
+#include <tuple>
+#include <vector>
+
 #include "webrtc/system_wrappers/include/metrics.h"
 #include <gtest/gtest.h>
 

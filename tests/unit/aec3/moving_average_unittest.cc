@@ -10,6 +10,9 @@
 
 #include "webrtc/modules/audio_processing/aec3/moving_average.h"
 
+#include <array>
+#include <cstddef>
+
 #include <gtest/gtest.h>
 
 namespace webrtc {

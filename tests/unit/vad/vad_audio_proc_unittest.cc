@@ -14,14 +14,13 @@
 
 #include "webrtc/modules/audio_processing/vad/vad_audio_proc.h"
 
-#include <math.h>
-#include <stdio.h>
-
+#include <cstdint>
+#include <cstdio>
 #include <string>
 
 #include "webrtc/modules/audio_processing/vad/common.h"
 #include <gtest/gtest.h>
-#include "tests/test_utils/file_utils.h"
+#include "test/testsupport/file_utils.h"
 
 namespace webrtc {
 
@@ -31,12 +30,12 @@ TEST(AudioProcessingTest, DISABLED_ComputingFirstSpectralPeak) {
   std::string peak_file_name =
       test::ResourcePath("audio_processing/agc/agc_spectral_peak", "dat");
   FILE* peak_file = fopen(peak_file_name.c_str(), "rb");
-  ASSERT_TRUE(peak_file != NULL);
+  ASSERT_TRUE(peak_file != nullptr);
 
   std::string pcm_file_name =
       test::ResourcePath("audio_processing/agc/agc_audio", "pcm");
   FILE* pcm_file = fopen(pcm_file_name.c_str(), "rb");
-  ASSERT_TRUE(pcm_file != NULL);
+  ASSERT_TRUE(pcm_file != nullptr);
 
   // Read 10 ms audio in each iteration.
   const size_t kDataLength = kLength10Ms;
