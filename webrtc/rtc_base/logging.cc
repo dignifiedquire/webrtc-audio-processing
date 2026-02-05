@@ -36,6 +36,7 @@
 #if RTC_LOG_ENABLED()
 
 #if defined(WEBRTC_WIN)
+#include <winsock2.h>
 #include <windows.h>
 #undef ERROR  // wingdi.h
 #endif
