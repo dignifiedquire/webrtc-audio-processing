@@ -25,6 +25,7 @@
 #include "modules/audio_processing/agc2/rnn_vad/common.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/numerics/safe_compare.h"
+#include "rtc_base/system/arch.h"
 #include <gtest/gtest.h>
 #include "tests/test_utils/file_utils.h"
 
@@ -115,9 +116,15 @@ ChunksFileReader CreatePitchBuffer24kHzReader() {
 ChunksFileReader CreateLpResidualAndPitchInfoReader() {
   constexpr int kPitchInfoSize = 2;  // Pitch period and strength.
   constexpr int kChunkSize = kBufSize24kHz + kPitchInfoSize;
+  // Use ARM64-specific reference data on ARM64 platforms due to floating-point
+  // differences.
+#if defined(WEBRTC_ARCH_ARM64)
+  const char* resource_name = "audio_processing/agc2/rnn_vad/pitch_lp_res_arm64";
+#else
+  const char* resource_name = "audio_processing/agc2/rnn_vad/pitch_lp_res";
+#endif
   auto reader = std::make_unique<FloatFileReader<float>>(
-      /*filename=*/test::ResourcePath(
-          "audio_processing/agc2/rnn_vad/pitch_lp_res", "dat"));
+      /*filename=*/test::ResourcePath(resource_name, "dat"));
   const int num_chunks = CheckedDivExact(reader->size(), kChunkSize);
   return {.chunk_size = kChunkSize,
           .num_chunks = num_chunks,
