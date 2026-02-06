@@ -1,15 +1,15 @@
-# Phase 8: Audio Processing Integration
+# Phase 7: Audio Processing Integration
 
 **Status:** Not Started
 **Estimated Duration:** 3-4 weeks
-**Dependencies:** Phases 2-7 (all component crates)
+**Dependencies:** Phases 2-6 (all component crates)
 **Outcome:** The `webrtc-apm` crate ties all components together into a complete `AudioProcessing` implementation. A Rust `AudioProcessing` can process audio identically to the C++ version through `ProcessStream` and `ProcessReverseStream`.
 
 ---
 
 ## Overview
 
-Port the top-level `audio_processing_impl.cc` and all the glue code that connects individual components (AEC3, NS, AGC, VAD) into a unified processing pipeline. This phase does not expose a C API (that's Phase 9) - it creates the Rust-native API.
+Port the top-level `audio_processing_impl.cc` and all the glue code that connects individual components (AEC3, NS, AGC, VAD) into a unified processing pipeline. This phase does not expose a C API (that's Phase 8) - it creates the Rust-native API.
 
 **Processing pipeline (capture path):**
 ```
@@ -322,7 +322,7 @@ proptest! {
 
 ---
 
-## Phase 8 Completion Checklist
+## Phase 7 Completion Checklist
 
 - [ ] AudioBuffer with band splitting ported and tested
 - [ ] All component wrappers ported (HPF, AGC1, AGC2, AECM, NS)

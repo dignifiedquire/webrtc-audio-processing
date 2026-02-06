@@ -13,16 +13,15 @@
 |-------|------|----------|---------|--------------|--------|
 | 1 | [Foundation Infrastructure](phase-01-foundation.md) | ~1 week | 11 | None | **Complete** |
 | 2 | [Common Audio Primitives](phase-02-common-audio.md) | ~3 weeks | 10 | Phase 1 | **Complete** (SIMD pending) |
-| 3 | [Voice Activity Detection](phase-03-vad.md) | 2 weeks | 5 | Phase 2 | Not Started |
-| 4 | [Automatic Gain Control (AGC2)](phase-04-agc.md) | 3-4 weeks | 14 | Phase 2 | **Next** |
+| 4 | [Automatic Gain Control (AGC2)](phase-04-agc.md) | 3-4 weeks | 14 | Phase 2 | **Complete** |
 | 5 | [Noise Suppression](phase-05-noise-suppression.md) | 2-3 weeks | 7 | Phase 2 | **Complete** |
-| 6 | [Echo Cancellation (AEC3)](phase-06-echo-cancellation.md) | 6-8 weeks | 20 | Phase 2 | Not Started |
-| 7 | [Audio Processing Integration](phase-07-integration.md) | 3-4 weeks | 11 | Phases 2-6 | Not Started |
+| 6 | [Echo Cancellation (AEC3)](phase-06-echo-cancellation.md) | 6-8 weeks | 20 | Phase 2 | **Next** |
+| 7 | [Audio Processing Integration](phase-07-integration.md) | 3-4 weeks | 11 | Phases 2,4-6 | Not Started |
 | 8 | [C API & Final Integration](phase-08-c-api.md) | 2-3 weeks | 7 | Phase 7 | Not Started |
 | 9 | [Documentation & Release](phase-09-docs-release.md) | 1-2 weeks | 6 | Phase 8 | Not Started |
-| **Total** | | **~22-31 weeks** | **~94** | | |
+| **Total** | | **~20-29 weeks** | **~86** | | |
 
-**Excluded (not ported):** AECM (removed upstream M146), AGC1 (deprecated), SPL library (legacy fixed-point).
+**Excluded (not ported):** AECM (removed upstream M146), AGC1 (deprecated), SPL library (legacy fixed-point), Core VAD (SPL-dependent, modern pipeline uses AGC2's RNN VAD).
 See [master plan](../rust-port.md) for rationale.
 
 ## Dependency Graph
@@ -33,16 +32,14 @@ Phase 1 (Foundation) ---- COMPLETE
   v
 Phase 2 (Common Audio) -- COMPLETE
   |
-  +---> Phase 3 (VAD) --+
-  |                      |
-  +---> Phase 4 (AGC2) <-+  NEXT (AGC2 has own RNN VAD, no core VAD dependency)
+  +---> Phase 4 (AGC2) -- COMPLETE
   |
   +---> Phase 5 (NS) ---- COMPLETE
   |
-  +---> Phase 6 (AEC3)
+  +---> Phase 6 (AEC3) -- NEXT
   |
   v
-Phase 7 (Integration) <--- Phases 3-6
+Phase 7 (Integration) <--- Phases 2,4-6
   |
   v
 Phase 8 (C API)
@@ -51,7 +48,7 @@ Phase 8 (C API)
 Phase 9 (Docs & Release)
 ```
 
-Phases 3-6 can be worked on in parallel after Phase 2 completes. Phase 5 (NS) is self-contained — no VAD, AGC, or SPL dependency. Phase 4 (AGC2) nominally depends on Phase 3, but AGC2 has its own RNN VAD, so the dependency may be loose.
+Phase 3 (VAD) removed — core VAD depends on SPL (excluded), and the modern pipeline uses AGC2's RNN VAD instead.
 
 ## Technology Stack (Finalized in Phase 1)
 
@@ -96,7 +93,6 @@ webrtc-apm (main crate, C API)
   +-- webrtc-aec3 + webrtc-simd + webrtc-fft + tracing
   +-- webrtc-agc2 + webrtc-simd + webrtc-fft + tracing
   +-- webrtc-ns + webrtc-fft + tracing
-  +-- webrtc-vad + tracing
   +-- webrtc-simd
   +-- webrtc-fft
   +-- webrtc-ring-buffer

@@ -1,8 +1,8 @@
-# Phase 10: Documentation & Release
+# Phase 9: Documentation & Release
 
 **Status:** Not Started
 **Estimated Duration:** 1-2 weeks
-**Dependencies:** Phase 9 (C API & Final Integration)
+**Dependencies:** Phase 8 (C API & Final Integration)
 **Outcome:** The Rust port is fully documented, published to crates.io, and ready for downstream adoption. Migration guides, API docs, and architecture documentation are complete.
 
 ---
@@ -216,7 +216,7 @@ release:
 
 ---
 
-## Phase 10 Completion Checklist
+## Phase 9 Completion Checklist
 
 - [ ] All public APIs documented with rustdoc
 - [ ] C API documented with Doxygen comments
@@ -242,7 +242,7 @@ release:
 
 ## Success Criteria (Full Project)
 
-At the end of Phase 10, the entire Rust port is complete. Final validation:
+At the end of Phase 9, the entire Rust port is complete. Final validation:
 
 - [ ] **All 2432 C++ tests pass** against Rust backend
 - [ ] **Property tests** demonstrate equivalence for all components

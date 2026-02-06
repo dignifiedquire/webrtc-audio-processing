@@ -1,8 +1,8 @@
-# Phase 9: C API & Final Integration
+# Phase 8: C API & Final Integration
 
 **Status:** Not Started
 **Estimated Duration:** 2-3 weeks
-**Dependencies:** Phase 8 (Audio Processing Integration)
+**Dependencies:** Phase 7 (Audio Processing Integration)
 **Outcome:** The Rust `webrtc-apm` crate exposes a stable C API via `cbindgen`, producing a drop-in replacement shared library. All 2432 C++ tests pass when linked against the Rust implementation.
 
 ---
@@ -395,7 +395,7 @@ Compare Rust and C++ performance.
 
 ---
 
-## Phase 9 Completion Checklist
+## Phase 8 Completion Checklist
 
 - [ ] C API defined with all essential functions
 - [ ] cbindgen generates valid C header

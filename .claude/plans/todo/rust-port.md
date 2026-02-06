@@ -30,6 +30,9 @@ Create a modular, fully-tested Rust port of the WebRTC Audio Processing library 
 - **SPL (Signal Processing Library):** 30+ files of fixed-point `int16_t`/`int32_t`
   arithmetic used only by AECM, AGC1, and VAD filterbank. The modern pipeline
   (AEC3, AGC2, NS) uses none of it. Skipping saves ~3 weeks of porting effort.
+- **Core VAD (`common_audio/vad/`):** Depends on SPL (excluded). The modern pipeline
+  uses AGC2's RNN VAD instead. The standalone VAD (`modules/audio_processing/vad/`)
+  is also excluded as it wraps the core VAD.
 
 ## Current Codebase Analysis
 
@@ -201,7 +204,6 @@ webrtc-apm (main crate, C API)
   +-- webrtc-aec3 + webrtc-simd + webrtc-fft + tracing
   +-- webrtc-agc2 + webrtc-simd + webrtc-fft + tracing
   +-- webrtc-ns + webrtc-fft + tracing
-  +-- webrtc-vad + tracing
   +-- webrtc-simd
   +-- webrtc-fft
   +-- webrtc-ring-buffer
@@ -251,20 +253,9 @@ Note: `webrtc-aecm` and `webrtc-agc` (AGC1) crates removed — see Excluded Modu
 - [ ] Ooura 128 SSE2 SIMD (4 inner functions)
 - [ ] Ooura 128 NEON SIMD (4 inner functions)
 
-### Phase 3: Voice Activity Detection (2 weeks)
+### Phase 3: Voice Activity Detection — REMOVED
 
-**3.1 Core VAD (`webrtc-vad`)**
-- [ ] Port `vad_core.c`
-- [ ] Port `vad_filterbank.c`
-- [ ] Port `vad_gmm.c`
-- [ ] Port `vad_sp.c`
-- [ ] Port `webrtc_vad.c` API
-- [ ] Proptest: Frame-by-frame VAD decision comparison
-
-**3.2 Standalone VAD (`webrtc-vad`)**
-- [ ] Port `voice_activity_detector.cc`
-- [ ] Port pitch-based VAD components
-- [ ] Proptest: Multi-frame comparison
+Core VAD depends on SPL (excluded). The modern pipeline uses AGC2's RNN VAD instead.
 
 ### Phase 4: Automatic Gain Control — AGC2 only (3-4 weeks)
 
@@ -552,7 +543,7 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 
 - **C++ Source:** WebRTC M145 (branch-heads/7632)
 - **Library Version:** 3.0
-- **Test Count:** 2432 passing (C++), 199 passing (Rust, Phases 1-2 + 5)
+- **Test Count:** 2432 passing (C++), 364 passing (Rust, Phases 1-2, 4-5)
 - **Build System:** Meson (C++), Cargo (Rust)
 - **C++ Standard:** C++20
 - **Rust Edition:** 2024, MSRV 1.91, resolver 3
