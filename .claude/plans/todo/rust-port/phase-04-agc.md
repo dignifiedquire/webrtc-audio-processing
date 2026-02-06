@@ -1,11 +1,33 @@
 # Phase 4: Automatic Gain Control (AGC2 only)
 
-**Status:** Not Started
+**Status:** Complete (all 9 steps done)
 **Estimated Duration:** 3-4 weeks
 **Dependencies:** Phase 2 (Common Audio)
 **Outcome:** The `webrtc-agc2` crate contains working AGC2 and RNN VAD implementations. All gain computations match the C++ reference within specified tolerance.
 
 **AGC1 is excluded** (deprecated, SPL-dependent — see master plan rationale).
+
+## Progress
+
+| Step | Description | Status | Commit | Tests |
+|------|-------------|--------|--------|-------|
+| 1 | Crate scaffold + constants | Done | `34917f3` | 0 |
+| 2 | RNN VAD foundation (weights, activations, data structures) | Done | `c6eb9cc` | 20 |
+| 3 | RNN VAD neural network layers (FC, GRU) | Done | `6e1163d` | 24 |
+| 4a | RNN VAD LP residual + auto-correlation | Done | `77b85a2` | 29 |
+| 4b | RNN VAD spectral features | Done | `0e3f213` | 36 |
+| 4c | RNN VAD pitch search | Done | `ca27b41` | 42 |
+| 4d | RNN VAD feature extraction pipeline | Done | `7a08835` | 43 |
+| 5a | RNN VAD model (rnn.rs) | Done | `9126077` | 46 |
+| 5b | VAD wrapper + FeatureVector refactor | Done | `c08e95a` | 50 |
+| 6a | Biquad filter | Done | `ac6ad17` | 55 |
+| 6b | Gain curves (limiter_db + interpolated) | Done | `15dd985` | 69 |
+| 6c | Gain applier | Done | `c8c4cfc` | 73 |
+| 7 | Level estimators + saturation protector | Done | `87622d0` | 124 |
+| 8 | Limiter + adaptive digital gain controller | Done | `e26be90` | 141 |
+| 9 | Clipping predictor | Done | `6295021` | 165 |
+
+**Current:** 165 tests in webrtc-agc2, 364 across workspace.
 
 ---
 
