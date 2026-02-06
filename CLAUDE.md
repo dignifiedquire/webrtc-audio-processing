@@ -1,5 +1,9 @@
 # Claude Code Context for webrtc-audio-processing
 
+## Tool Preferences
+
+- **ALWAYS use `rg` (ripgrep) for searching**, never the Grep tool. Use `rg` via Bash.
+
 ## Project Overview
 
 This is a Linux packaging-friendly copy of the AudioProcessing module from the WebRTC project. It provides echo cancellation, noise suppression, automatic gain control, and other audio processing capabilities used by projects like PulseAudio.
