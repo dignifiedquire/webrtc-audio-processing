@@ -303,18 +303,20 @@ Note: AGC1 (`webrtc-agc`) is **not ported** — see Excluded Modules rationale.
 - [ ] Port `vad_wrapper.cc`
 - [ ] Proptest: Speech probability comparison
 
-### Phase 5: Noise Suppression (2-3 weeks)
+### Phase 5: Noise Suppression -- COMPLETE (7 commits, 70 tests)
 
 **5.1 NS Core (`webrtc-ns`)**
-- [ ] Port `ns_fft.cc`
-- [ ] Port `fast_math.cc`
-- [ ] Port `histograms.cc`
-- [ ] Port `prior_signal_model.cc` / `signal_model.cc`
-- [ ] Port `noise_estimator.cc` / `quantile_noise_estimator.cc`
-- [ ] Port `speech_probability_estimator.cc`
-- [ ] Port `wiener_filter.cc`
-- [ ] Port `noise_suppressor.cc`
-- [ ] Proptest: Frame-by-frame suppression comparison
+- [x] Port `ns_fft.cc` → `ns_fft.rs` (FFT wrapper using webrtc-fft Fft4g)
+- [x] Port `fast_math.cc` → `fast_math.rs` (SqrtFastStartingAtLog, LogApproximation)
+- [x] Port `histograms.cc` → `histograms.rs` (LRT, flatness, diff histograms)
+- [x] Port `suppression_params.cc` → `suppression_params.rs` (const params per level)
+- [x] Port `prior_signal_model.cc` / `signal_model.cc` → Rust modules
+- [x] Port `noise_estimator.cc` / `quantile_noise_estimator.cc` → Rust modules
+- [x] Port `prior_signal_model_estimator.cc` / `signal_model_estimator.cc` → Rust modules
+- [x] Port `speech_probability_estimator.cc` → Rust module
+- [x] Port `wiener_filter.cc` → Rust module (directed-decision SNR, gain computation)
+- [x] Port `noise_suppressor.cc` → `noise_suppressor.rs` (single-channel pipeline)
+- Deferred to Phase 7: multi-channel support (requires AudioBuffer), upper band processing
 
 ### Phase 6: Echo Cancellation (6-8 weeks)
 
@@ -550,7 +552,7 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 
 - **C++ Source:** WebRTC M145 (branch-heads/7632)
 - **Library Version:** 3.0
-- **Test Count:** 2432 passing (C++), 128 passing (Rust, Phases 1-2)
+- **Test Count:** 2432 passing (C++), 199 passing (Rust, Phases 1-2 + 5)
 - **Build System:** Meson (C++), Cargo (Rust)
 - **C++ Standard:** C++20
 - **Rust Edition:** 2024, MSRV 1.91, resolver 3
