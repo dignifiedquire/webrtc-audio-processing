@@ -10,3 +10,7 @@ depcomp
 install/
 subprojects/*/
 .cache
+
+# Rust
+target/
+Cargo.lock
