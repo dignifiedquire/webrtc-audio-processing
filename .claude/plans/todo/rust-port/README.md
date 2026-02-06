@@ -14,8 +14,8 @@
 | 1 | [Foundation Infrastructure](phase-01-foundation.md) | ~1 week | 11 | None | **Complete** |
 | 2 | [Common Audio Primitives](phase-02-common-audio.md) | ~3 weeks | 10 | Phase 1 | **Complete** (SIMD pending) |
 | 3 | [Voice Activity Detection](phase-03-vad.md) | 2 weeks | 5 | Phase 2 | Not Started |
-| 4 | [Automatic Gain Control (AGC2)](phase-04-agc.md) | 3-4 weeks | 13 | Phase 2, 3 | Not Started |
-| 5 | [Noise Suppression](phase-05-noise-suppression.md) | 2-3 weeks | 6 | Phase 2 | **Next** |
+| 4 | [Automatic Gain Control (AGC2)](phase-04-agc.md) | 3-4 weeks | 14 | Phase 2 | **Next** |
+| 5 | [Noise Suppression](phase-05-noise-suppression.md) | 2-3 weeks | 7 | Phase 2 | **Complete** |
 | 6 | [Echo Cancellation (AEC3)](phase-06-echo-cancellation.md) | 6-8 weeks | 20 | Phase 2 | Not Started |
 | 7 | [Audio Processing Integration](phase-07-integration.md) | 3-4 weeks | 11 | Phases 2-6 | Not Started |
 | 8 | [C API & Final Integration](phase-08-c-api.md) | 2-3 weeks | 7 | Phase 7 | Not Started |
@@ -35,9 +35,9 @@ Phase 2 (Common Audio) -- COMPLETE
   |
   +---> Phase 3 (VAD) --+
   |                      |
-  +---> Phase 4 (AGC2) <-+  (AGC2 has own RNN VAD, core VAD dependency TBD)
+  +---> Phase 4 (AGC2) <-+  NEXT (AGC2 has own RNN VAD, no core VAD dependency)
   |
-  +---> Phase 5 (NS) ---- NEXT
+  +---> Phase 5 (NS) ---- COMPLETE
   |
   +---> Phase 6 (AEC3)
   |

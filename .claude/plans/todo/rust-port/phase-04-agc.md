@@ -1,393 +1,339 @@
-# Phase 4: Automatic Gain Control
+# Phase 4: Automatic Gain Control (AGC2 only)
 
 **Status:** Not Started
-**Estimated Duration:** 4-5 weeks
-**Dependencies:** Phase 2 (Common Audio), Phase 3 (VAD - for RNN VAD dependency)
-**Outcome:** The `webrtc-agc` crate contains working AGC1, AGC2, and RNN VAD implementations. All gain computations match the C++ reference within specified tolerance.
+**Estimated Duration:** 3-4 weeks
+**Dependencies:** Phase 2 (Common Audio)
+**Outcome:** The `webrtc-agc2` crate contains working AGC2 and RNN VAD implementations. All gain computations match the C++ reference within specified tolerance.
+
+**AGC1 is excluded** (deprecated, SPL-dependent — see master plan rationale).
 
 ---
 
 ## Overview
 
-Port the Automatic Gain Control modules. AGC is the second-largest module after AEC3 and has two generations:
-- **AGC1** (legacy): Analog + digital gain control, used by older applications
-- **AGC2** (modern): Adaptive digital gain with RNN-based VAD, input volume controller, limiter
+Port the AGC2 module and its RNN VAD to Rust. AGC2 is the modern gain controller used by the default audio processing pipeline. It includes an RNN-based voice activity detector, adaptive digital gain, limiter, and input volume controller.
 
-AGC2 internally uses an RNN-based Voice Activity Detector (different from the core VAD in Phase 3). This RNN VAD uses neural network inference with SIMD-optimized vector math.
+**Scope:** ~5,500 lines (AGC2 core) + ~3,200 lines (RNN VAD) + ~540 lines (rnnoise weights/activations) = **~9,200 lines total** across 38 source files → new `webrtc-agc2` crate.
 
 ---
 
-## Source Files to Port
+## Key Dependencies
 
-### AGC1 Legacy (`webrtc/modules/audio_processing/agc/`)
+| Dependency | Source | Status |
+|------------|--------|--------|
+| `webrtc-fft` (PFFFT) | RNN VAD spectral features, auto-correlation | Already ported (scalar) |
+| `webrtc-simd` (dot_product) | RNN VAD VectorMath | Already ported (SSE2/AVX2/NEON) |
+| `webrtc-common-audio` (PushResampler) | VAD wrapper resamples to 24kHz | Already ported |
+| `webrtc-common-audio` (audio_util) | `FloatS16ToFloat` etc. | Already ported |
+| `AudioBuffer` | `input_volume_controller`, `gain_controller2` top-level | **Not ported — defer to Phase 7** |
+| `AudioFrameView` | `gain_applier`, `clipping_predictor` | Simple view type, port inline |
+| `ApmDataDumper` | Debug logging in many AGC2 files | No-op (WEBRTC_APM_DEBUG_DUMP=0), skip entirely |
+| `FieldTrialsView` | `input_volume_controller`, `speech_level_estimator` | Use default values (no field trial system in Rust port) |
+| `metrics.h` | `input_volume_stats_reporter` | Skip metrics reporting |
 
-| Source File | Description | Complexity |
-|-------------|-------------|------------|
-| `agc.cc` | AGC interface | Low |
-| `agc_manager_direct.cc` | Direct AGC manager | High |
-| `loudness_histogram.cc` | Loudness tracking | Medium |
-| `utility.cc` | AGC utilities | Low |
-| `legacy/analog_agc.cc` | Analog gain control | High |
-| `legacy/digital_agc.cc` | Digital compression | High |
+## What to Defer to Phase 7
 
-### AGC2 Core (`webrtc/modules/audio_processing/agc2/`)
+These depend on `AudioBuffer` (not yet ported):
+- `input_volume_controller.cc` — uses `AudioBuffer` for multi-channel analysis
+- `gain_controller2.cc` — top-level wrapper that orchestrates everything with `AudioBuffer`
+- `input_volume_stats_reporter.cc` — uses `metrics.h` for WebRTC stats
 
-| Source File | Description | Complexity |
-|-------------|-------------|------------|
-| `limiter_db_gain_curve.cc` | Limiter gain curve | Medium |
-| `interpolated_gain_curve.cc` | Interpolated gain lookup | Medium |
-| `compute_interpolated_gain_curve.cc` | Gain curve computation | Medium |
-| `limiter.cc` | Audio limiter | Medium |
-| `gain_applier.cc` | Gain application | Low |
-| `biquad_filter.cc` | Biquad IIR filter | Low |
-| `fixed_digital_level_estimator.cc` | Fixed digital level | Medium |
-| `noise_level_estimator.cc` | Noise floor estimation | Medium |
-| `speech_level_estimator.cc` | Speech level estimation | Medium |
-| `speech_level_estimator_impl.cc` | Implementation | Medium |
-| `speech_level_estimator_experimental_impl.cc` | Experimental impl | Medium |
-| `saturation_protector.cc` | Saturation protection | Medium |
-| `saturation_protector_buffer.cc` | Saturation buffer | Low |
-| `speech_probability_buffer.cc` | Speech probability tracking | Low |
-| `adaptive_digital_gain_controller.cc` | Adaptive digital AGC | High |
-| `agc2_testing_common.cc` | Test utilities | Low |
-| `vector_float_frame.cc` | Float frame container | Low |
-| `cpu_features.cc` | CPU detection for SIMD | Low |
-
-### AGC2 Input Volume Controller
-
-| Source File | Description | Complexity |
-|-------------|-------------|------------|
-| `clipping_predictor.cc` | Clipping prediction | High |
-| `clipping_predictor_level_buffer.cc` | Level buffer | Low |
-| `input_volume_controller.cc` | Volume control | High |
-| `input_volume_stats_reporter.cc` | Stats reporting | Low |
-
-### RNN VAD (`webrtc/modules/audio_processing/agc2/rnn_vad/`)
-
-| Source File | Description | Complexity |
-|-------------|-------------|------------|
-| `rnn_vad_weights.cc` | Neural network weights (data) | Low (large) |
-| `rnn_activations.h` | Activation functions (tanh approx) | Medium |
-| `rnn_fc.cc` | Fully-connected layer | Medium |
-| `rnn_gru.cc` | GRU recurrent layer | High |
-| `rnn.cc` | Full RNN model | High |
-| `features_extraction.cc` | Feature extraction pipeline | High |
-| `spectral_features.cc` | Spectral feature computation | Medium |
-| `spectral_features_internal.cc` | Spectral internals | Medium |
-| `lp_residual.cc` | LP residual computation | Medium |
-| `auto_correlation.cc` | Auto-correlation for pitch | Medium |
-| `pitch_search.cc` | Pitch period search | High |
-| `pitch_search_internal.cc` | Pitch search helpers | Medium |
-| `vector_math_avx2.cc` | AVX2 vector operations | Medium |
-| `vad_wrapper.cc` | VAD wrapper for AGC2 | Medium |
+Everything else is self-contained and can be ported now.
 
 ---
 
-## Tasks
+## Architecture
 
-### 4.1 AGC2 Building Blocks (Bottom-Up)
-
-Port the lowest-level AGC2 components first.
-
-**Step 1: Biquad Filter**
-- `biquad_filter.cc` -> `agc2/biquad_filter.rs`
-- Simple IIR filter, straightforward port
-
-**Step 2: Gain Curves**
-- `limiter_db_gain_curve.cc` -> `agc2/limiter_db_gain_curve.rs`
-- `interpolated_gain_curve.cc` -> `agc2/interpolated_gain_curve.rs`
-- `compute_interpolated_gain_curve.cc` -> `agc2/compute_gain_curve.rs`
-- These are pure math functions with lookup tables
-
-**Step 3: Gain Application and Limiter**
-- `gain_applier.cc` -> `agc2/gain_applier.rs`
-- `limiter.cc` -> `agc2/limiter.rs`
-
-**Proptest per component:**
-```rust
-proptest! {
-    #[test]
-    fn limiter_gain_curve_matches_cpp(
-        input_level_db in -100.0f32..0.0f32,
-    ) {
-        let rust_gain = rust_limiter_gain(input_level_db);
-        let cpp_gain = cpp_limiter_gain(input_level_db);
-        prop_assert!((rust_gain - cpp_gain).abs() < 1e-6);
-    }
-}
+```
+crates/webrtc-agc2/
+├── Cargo.toml          # deps: webrtc-fft, webrtc-simd, webrtc-common-audio, tracing
+└── src/
+    ├── lib.rs
+    ├── common.rs                    # agc2_common.h constants
+    ├── biquad_filter.rs             # IIR biquad filter
+    ├── limiter_db_gain_curve.rs     # dB gain curve math
+    ├── interpolated_gain_curve.rs   # lookup-table gain curve
+    ├── gain_applier.rs              # per-sample gain with ramping
+    ├── limiter.rs                   # output limiter
+    ├── fixed_digital_level_estimator.rs  # peak level estimation
+    ├── noise_level_estimator.rs     # noise floor estimation
+    ├── speech_level_estimator.rs    # speech level estimation
+    ├── saturation_protector.rs      # headroom management
+    ├── saturation_protector_buffer.rs
+    ├── speech_probability_buffer.rs
+    ├── adaptive_digital_gain_controller.rs  # main adaptive gain logic
+    ├── clipping_predictor.rs        # clipping prediction
+    ├── clipping_predictor_level_buffer.rs
+    ├── vad_wrapper.rs               # VAD wrapper (resamples → RNN VAD)
+    └── rnn_vad/
+        ├── mod.rs
+        ├── common.rs                # constants (sample rates, pitch, feature dims)
+        ├── activations.rs           # TansigApproximated, sigmoid, ReLU (from rnnoise)
+        ├── weights.rs               # NN weight tables (from rnnoise)
+        ├── vector_math.rs           # dot product dispatch (uses webrtc-simd)
+        ├── ring_buffer.rs           # fixed-size ring buffer (header-only in C++)
+        ├── sequence_buffer.rs       # fixed-size sequence buffer (header-only)
+        ├── symmetric_matrix_buffer.rs  # symmetric matrix buffer (header-only)
+        ├── fc_layer.rs              # fully-connected NN layer
+        ├── gru_layer.rs             # GRU recurrent layer
+        ├── rnn.rs                   # full RNN model (FC → GRU → FC → output)
+        ├── lp_residual.rs           # linear prediction residual
+        ├── auto_correlation.rs      # auto-correlation (uses PFFFT)
+        ├── spectral_features_internal.rs
+        ├── spectral_features.rs     # spectral feature extraction (uses PFFFT)
+        ├── pitch_search_internal.rs # pitch period search helpers
+        ├── pitch_search.rs          # pitch search
+        └── features_extraction.rs   # complete feature extraction pipeline
 ```
 
-**Verification:**
-- [ ] `biquad_filter_unittest` matched
-- [ ] `limiter_db_gain_curve_unittest` matched
-- [ ] `interpolated_gain_curve_unittest` matched
-- [ ] `limiter_unittest` matched
-- [ ] `gain_applier_unittest` matched
+## SIMD
+
+The only SIMD in AGC2 is `VectorMath::DotProduct` in the RNN VAD:
+- **SSE2**: inline in `vector_math.h` — 4-wide multiply-add
+- **NEON**: inline in `vector_math.h` — 4-wide FMA
+- **AVX2**: separate `vector_math_avx2.cc` — 8-wide FMA
+
+This maps directly to `webrtc_simd::dot_product()` which already has all three backends. No new SIMD code needed — just call `webrtc_simd::dot_product`.
+
+---
+
+## Implementation Steps
+
+### Step 1: Crate scaffold + constants
+
+Create `crates/webrtc-agc2/` with `Cargo.toml` and `common.rs` (port `agc2_common.h` constants).
+
+**Commit:** `feat(rust): add webrtc-agc2 crate scaffold`
+
+### Step 2: RNN VAD — weights, activations, data structures
+
+Port the foundation pieces that have no internal dependencies:
+- `activations.rs` — `TansigApproximated` (201-entry lookup table + interpolation), `SigmoidApproximated`, `RectifiedLinearUnit` from `rnnoise/src/rnn_activations.h`
+- `weights.rs` — const arrays from `rnnoise/src/rnn_vad_weights.cc` (401 lines of float data)
+- `common.rs` (rnn_vad) — constants from `rnn_vad/common.h`
+- `ring_buffer.rs` — header-only fixed-size ring buffer
+- `sequence_buffer.rs` — header-only sequence buffer
+- `symmetric_matrix_buffer.rs` — header-only symmetric matrix buffer
+- `vector_math.rs` — delegates to `webrtc_simd::dot_product`
+
+**Critical:** The tanh approximation (`TansigApproximated`) uses a 201-entry lookup table with linear interpolation. Must match C++ exactly for bit-exact NN inference.
+
+**Tests:** Port from 5 C++ test files: `ring_buffer_unittest`, `sequence_buffer_unittest`, `symmetric_matrix_buffer_unittest`, `vector_math_unittest` + activation function unit tests.
+
+**Commit:** `feat(rust): port RNN VAD foundation (weights, activations, data structures)`
+
+### Step 3: RNN VAD — neural network layers
+
+- `fc_layer.rs` — fully-connected layer: `output = activation(weights × input + bias)`. Uses `vector_math::dot_product` for each output neuron.
+- `gru_layer.rs` — GRU layer: update gate, reset gate, candidate state. Three weight matrices + recurrent weights. Uses `vector_math::dot_product`.
+
+**C++ sources:** `rnn_fc.cc` (109 lines), `rnn_gru.cc` (208 lines)
+
+**Tests:** Port `rnn_fc_unittest`, `rnn_gru_unittest`.
+
+**Commit:** `feat(rust): port RNN VAD neural network layers (FC, GRU)`
+
+### Step 4: RNN VAD — feature extraction
+
+Port bottom-up:
+1. `lp_residual.rs` — LP residual via Levinson-Durbin (139 lines)
+2. `auto_correlation.rs` — uses PFFFT for FFT-based auto-correlation (94 lines)
+3. `spectral_features_internal.rs` — band energy computation, cepstral coefficients (191 lines)
+4. `spectral_features.rs` — full spectral feature extractor using PFFFT (221 lines)
+5. `pitch_search_internal.rs` — pitch search helpers (515 lines — largest file)
+6. `pitch_search.rs` — pitch period search at 12kHz/24kHz
+7. `features_extraction.rs` — ties everything together into 42-element feature vector (94 lines)
+
+**Tests:** Port `lp_residual_unittest`, `auto_correlation_unittest`, `spectral_features_internal_unittest`, `spectral_features_unittest`, `pitch_search_internal_unittest`, `pitch_search_unittest`, `features_extraction_unittest`.
+
+**Commits:**
+1. `feat(rust): port RNN VAD LP residual and auto-correlation`
+2. `feat(rust): port RNN VAD spectral features`
+3. `feat(rust): port RNN VAD pitch search`
+4. `feat(rust): port RNN VAD feature extraction pipeline`
+
+### Step 5: RNN VAD — model + wrapper
+
+- `rnn.rs` — full RNN model: input FC (42→24) → GRU (24→24) → output FC (24→1) → sigmoid (96 lines)
+- `vad_wrapper.rs` — resamples input to 24kHz via `PushResampler`, extracts features, runs RNN, outputs speech probability
+
+**Tests:** Port `rnn_unittest`, `rnn_vad_unittest`, `vad_wrapper_unittest`.
+
+**Commit:** `feat(rust): port RNN VAD model and wrapper`
+
+### Step 6: AGC2 building blocks
+
+- `biquad_filter.rs` — simple IIR biquad (cascadable)
+- `limiter_db_gain_curve.rs` — piecewise dB gain curve
+- `interpolated_gain_curve.rs` — lookup-table approximation of gain curve
+- `gain_applier.rs` — applies gain per-sample with linear ramping
+
+**Tests:** Port `biquad_filter_unittest`, `limiter_db_gain_curve_unittest`, `interpolated_gain_curve_unittest`, `gain_applier_unittest`.
 
 **Commits:**
 1. `feat(rust): port AGC2 biquad filter`
-2. `feat(rust): port AGC2 gain curves and limiter`
-3. `feat(rust): port AGC2 gain applier`
+2. `feat(rust): port AGC2 gain curves and gain applier`
 
----
+### Step 7: AGC2 level estimators
 
-### 4.2 AGC2 Level Estimators
+- `fixed_digital_level_estimator.rs` — peak envelope tracking
+- `noise_level_estimator.rs` — minimum statistics noise floor
+- `speech_level_estimator.rs` — speech level with confidence tracking
+- `saturation_protector.rs` + `saturation_protector_buffer.rs` — headroom management
+- `speech_probability_buffer.rs` — ring buffer of speech probabilities
 
-Port the level estimation components.
-
-**Files:**
-- `fixed_digital_level_estimator.cc` -> `agc2/fixed_digital_level_estimator.rs`
-- `noise_level_estimator.cc` -> `agc2/noise_level_estimator.rs`
-- `speech_level_estimator.cc` -> `agc2/speech_level_estimator.rs`
-- `speech_level_estimator_impl.cc` -> `agc2/speech_level_estimator_impl.rs`
-- `speech_level_estimator_experimental_impl.cc` -> `agc2/speech_level_estimator_experimental.rs`
-- `saturation_protector.cc` -> `agc2/saturation_protector.rs`
-- `saturation_protector_buffer.cc` -> `agc2/saturation_protector_buffer.rs`
-- `speech_probability_buffer.cc` -> `agc2/speech_probability_buffer.rs`
-
-**Proptest:** Feed multi-frame audio sequences and compare level estimates.
-
-**Verification:**
-- [ ] `fixed_digital_level_estimator_unittest` matched
-- [ ] `noise_level_estimator_unittest` matched
-- [ ] `speech_level_estimator_unittest` matched
-- [ ] `saturation_protector_unittest` matched
-- [ ] `saturation_protector_buffer_unittest` matched
-- [ ] `speech_probability_buffer_unittest` matched
+**Tests:** Port `fixed_digital_level_estimator_unittest`, `noise_level_estimator_unittest`, `speech_level_estimator_unittest`, `saturation_protector_unittest`, `saturation_protector_buffer_unittest`, `speech_probability_buffer_unittest`.
 
 **Commits:**
-1. `feat(rust): port AGC2 level estimators (fixed digital, noise)`
-2. `feat(rust): port AGC2 speech level estimator and saturation protector`
+1. `feat(rust): port AGC2 level estimators`
+2. `feat(rust): port AGC2 saturation protector`
 
----
+### Step 8: AGC2 adaptive digital controller
 
-### 4.3 RNN VAD
+- `adaptive_digital_gain_controller.rs` — main adaptive gain logic combining VAD + level estimators + limiter
 
-Port the neural network-based voice activity detector. This is the most complex sub-component.
-
-**Port order:**
-
-**Step 1: Weight tables and activation functions**
-- `rnn_vad_weights.cc` - Large const arrays of floats (just data)
-- `rnn_activations.h` - Custom tanh approximation, sigmoid, ReLU
-
-The tanh approximation is critical for bit-exactness:
-```cpp
-// Piecewise linear approximation of tanh
-inline float TanhApproximation(float x) { ... }
-```
-
-**Step 2: Neural network layers**
-- `rnn_fc.cc` - Fully-connected layer (matrix multiply + bias + activation)
-- `rnn_gru.cc` - GRU layer (gated recurrent unit)
-- `vector_math_avx2.cc` - AVX2-optimized vector dot product for NN inference
-
-**Step 3: Feature extraction**
-- `lp_residual.cc` - Linear prediction residual
-- `auto_correlation.cc` - Auto-correlation for pitch detection
-- `spectral_features_internal.cc` - Spectral feature helpers
-- `spectral_features.cc` - Full spectral feature pipeline
-- `pitch_search_internal.cc` - Pitch period search helpers
-- `pitch_search.cc` - Full pitch search
-- `features_extraction.cc` - Complete feature extraction
-
-**Step 4: RNN model and wrapper**
-- `rnn.cc` - Full RNN model (FC -> GRU -> FC -> output)
-- `vad_wrapper.cc` - VAD wrapper that combines feature extraction + RNN
-
-**Destination:**
-```
-webrtc-agc/src/
-  rnn_vad/
-    mod.rs                # Re-exports
-    weights.rs            # Weight tables (generated from .cc)
-    activations.rs        # Tanh approx, sigmoid, ReLU
-    fc_layer.rs           # Fully-connected layer
-    gru_layer.rs          # GRU layer
-    vector_math.rs        # Scalar vector ops
-    vector_math_avx2.rs   # AVX2-optimized ops
-    lp_residual.rs        # LP residual
-    auto_correlation.rs   # Auto-correlation
-    spectral_features.rs  # Spectral features
-    pitch_search.rs       # Pitch search
-    features.rs           # Feature extraction pipeline
-    rnn.rs                # Full RNN model
-    vad.rs                # VAD wrapper
-```
-
-**Critical correctness concerns:**
-- The tanh approximation MUST produce identical output to C++. Test with edge cases.
-- Matrix multiplication order and accumulation order must match exactly for SIMD.
-- Weight tables must be copied exactly (include all decimal places).
-- The GRU update gate / reset gate computation order matters.
-
-**Proptest:**
-```rust
-proptest! {
-    #[test]
-    fn rnn_vad_probability_matches_cpp(
-        audio_frames in proptest::collection::vec(
-            audio_frame_f32(24000),  // RNN VAD operates at 24kHz
-            1..50
-        ),
-    ) {
-        // Process frames through both implementations
-        for frame in &audio_frames {
-            let rust_prob = rust_rnn_vad.process(frame);
-            let cpp_prob = cpp_rnn_vad.process(frame);
-            prop_assert!((rust_prob - cpp_prob).abs() < 1e-5);
-        }
-    }
-}
-```
-
-**Verification:**
-- [ ] `auto_correlation_unittest` matched
-- [ ] `features_extraction_unittest` matched
-- [ ] `lp_residual_unittest` matched
-- [ ] `pitch_search_internal_unittest` matched
-- [ ] `pitch_search_unittest` matched
-- [ ] `rnn_fc_unittest` matched
-- [ ] `rnn_gru_unittest` matched
-- [ ] `rnn_unittest` matched
-- [ ] `rnn_vad_unittest` matched
-- [ ] `ring_buffer_unittest` matched (RNN VAD has its own ring buffer)
-- [ ] `sequence_buffer_unittest` matched
-- [ ] `spectral_features_internal_unittest` matched
-- [ ] `spectral_features_unittest` matched
-- [ ] `symmetric_matrix_buffer_unittest` matched
-- [ ] `vector_math_unittest` matched
-- [ ] AVX2 vector math produces same output as scalar
-
-**Commits:**
-1. `feat(rust): port RNN VAD weight tables and activation functions`
-2. `feat(rust): port RNN VAD neural network layers (FC, GRU)`
-3. `feat(rust): port RNN VAD vector math with AVX2 optimization`
-4. `feat(rust): port RNN VAD feature extraction pipeline`
-5. `feat(rust): port RNN VAD pitch search`
-6. `feat(rust): port RNN VAD model and wrapper`
-
----
-
-### 4.4 AGC2 Adaptive Digital Controller
-
-Port the main adaptive digital gain controller that ties together level estimators and RNN VAD.
-
-**File:** `adaptive_digital_gain_controller.cc` -> `agc2/adaptive_digital.rs`
-
-This is the central AGC2 component that:
-1. Gets speech probability from RNN VAD
-2. Estimates speech level and noise level
-3. Computes adaptive gain
-4. Applies gain with saturation protection
-
-**Verification:**
-- [ ] `adaptive_digital_gain_controller_unittest` matched
-- [ ] Multi-frame gain tracking matches C++
+**Tests:** Port `adaptive_digital_gain_controller_unittest`.
 
 **Commit:** `feat(rust): port AGC2 adaptive digital gain controller`
 
----
+### Step 9: AGC2 clipping predictor
 
-### 4.5 AGC2 Input Volume Controller
+- `clipping_predictor.rs` — clipping prediction (uses `AudioFrameView` — port as simple `&[&[f32]]` view)
+- `clipping_predictor_level_buffer.rs` — level tracking buffer
 
-Port the clipping prediction and input volume control.
+**Tests:** Port `clipping_predictor_unittest`, `clipping_predictor_level_buffer_unittest`.
 
-**Files:**
-- `clipping_predictor.cc` -> `agc2/clipping_predictor.rs`
-- `clipping_predictor_level_buffer.cc` -> `agc2/clipping_predictor_buffer.rs`
-- `input_volume_controller.cc` -> `agc2/input_volume_controller.rs`
-- `input_volume_stats_reporter.cc` -> `agc2/input_volume_stats.rs`
+**Commit:** `feat(rust): port AGC2 clipping predictor`
 
-**Verification:**
-- [ ] `clipping_predictor_unittest` matched
-- [ ] `clipping_predictor_level_buffer_unittest` matched
-- [ ] `input_volume_controller_unittest` matched
-- [ ] `input_volume_stats_reporter_unittest` matched
+### Deferred to Phase 7
 
-**Commits:**
-1. `feat(rust): port AGC2 clipping predictor`
-2. `feat(rust): port AGC2 input volume controller`
+- `input_volume_controller.rs` — depends on `AudioBuffer`
+- `gain_controller2.rs` — top-level orchestrator, depends on `AudioBuffer`
+- `input_volume_stats_reporter.rs` — depends on `metrics.h`
 
 ---
 
-### 4.6 AGC2 Top-Level
+## C++ Reference Files
 
-Port the top-level gain_controller2 and VAD wrapper.
+### AGC2 Core (in `webrtc/modules/audio_processing/agc2/`)
+| File | Lines | Rust Target |
+|------|-------|-------------|
+| `agc2_common.h` | 50 | `common.rs` |
+| `biquad_filter.cc/h` | 60 | `biquad_filter.rs` |
+| `limiter_db_gain_curve.cc/h` | 140 | `limiter_db_gain_curve.rs` |
+| `interpolated_gain_curve.cc/h` | 160 | `interpolated_gain_curve.rs` |
+| `compute_interpolated_gain_curve.cc/h` | 200 | inline in `interpolated_gain_curve.rs` |
+| `gain_applier.cc/h` | 80 | `gain_applier.rs` |
+| `limiter.cc/h` | 120 | `limiter.rs` |
+| `fixed_digital_level_estimator.cc/h` | 100 | `fixed_digital_level_estimator.rs` |
+| `noise_level_estimator.cc/h` | 140 | `noise_level_estimator.rs` |
+| `speech_level_estimator.cc/h` | 80 | `speech_level_estimator.rs` |
+| `speech_level_estimator_impl.cc/h` | 100 | inline in `speech_level_estimator.rs` |
+| `speech_level_estimator_experimental_impl.cc/h` | 100 | inline in `speech_level_estimator.rs` |
+| `saturation_protector.cc/h` | 120 | `saturation_protector.rs` |
+| `saturation_protector_buffer.cc/h` | 80 | `saturation_protector_buffer.rs` |
+| `speech_probability_buffer.cc/h` | 70 | `speech_probability_buffer.rs` |
+| `adaptive_digital_gain_controller.cc/h` | 200 | `adaptive_digital_gain_controller.rs` |
+| `clipping_predictor.cc/h` | 200 | `clipping_predictor.rs` |
+| `clipping_predictor_level_buffer.cc/h` | 80 | `clipping_predictor_level_buffer.rs` |
+| `vad_wrapper.cc/h` | 120 | `vad_wrapper.rs` |
+| `cpu_features.cc/h` | 60 | use `webrtc_simd::detect_backend()` |
+| `gain_map_internal.h` | 30 | inline in `clipping_predictor.rs` |
 
-**Files:**
-- `gain_controller2.cc` -> `agc2/mod.rs` (or `gain_controller2.rs`)
-- `vad_wrapper.cc` -> `agc2/vad_wrapper.rs`
+### RNN VAD (in `webrtc/modules/audio_processing/agc2/rnn_vad/`)
+| File | Lines | Rust Target |
+|------|-------|-------------|
+| `common.h` | 79 | `rnn_vad/common.rs` |
+| `vector_math.h` + `vector_math_avx2.cc` | 166 | `rnn_vad/vector_math.rs` (delegates to webrtc-simd) |
+| `ring_buffer.h` | 55 | `rnn_vad/ring_buffer.rs` |
+| `sequence_buffer.h` | 77 | `rnn_vad/sequence_buffer.rs` |
+| `symmetric_matrix_buffer.h` | 96 | `rnn_vad/symmetric_matrix_buffer.rs` |
+| `rnn_fc.cc/h` | 182 | `rnn_vad/fc_layer.rs` |
+| `rnn_gru.cc/h` | 268 | `rnn_vad/gru_layer.rs` |
+| `rnn.cc/h` | 146 | `rnn_vad/rnn.rs` |
+| `lp_residual.cc/h` | 175 | `rnn_vad/lp_residual.rs` |
+| `auto_correlation.cc/h` | 134 | `rnn_vad/auto_correlation.rs` |
+| `spectral_features_internal.cc/h` | 291 | `rnn_vad/spectral_features_internal.rs` |
+| `spectral_features.cc/h` | 299 | `rnn_vad/spectral_features.rs` |
+| `pitch_search_internal.cc/h` | 626 | `rnn_vad/pitch_search_internal.rs` |
+| `pitch_search.cc/h` | 95 | `rnn_vad/pitch_search.rs` |
+| `features_extraction.cc/h` | 145 | `rnn_vad/features_extraction.rs` |
 
-**Verification:**
-- [ ] `gain_controller2_unittest` matched
-- [ ] `vad_wrapper_unittest` matched
-- [ ] `agc2_testing_common_unittest` matched
-
-**Commit:** `feat(rust): port AGC2 top-level gain controller`
+### RNNoise (in `webrtc/third_party/rnnoise/src/`)
+| File | Lines | Rust Target |
+|------|-------|-------------|
+| `rnn_activations.h` | 102 | `rnn_vad/activations.rs` |
+| `rnn_vad_weights.cc/h` | 438 | `rnn_vad/weights.rs` |
 
 ---
 
-### 4.7 AGC1 Legacy
+## Test Files (33 total)
 
-Port the legacy AGC. Lower priority but needed for full compatibility.
+### AGC2 Core (18 tests in `tests/unit/agc2/`)
+- `biquad_filter_unittest.cc`
+- `limiter_db_gain_curve_unittest.cc`
+- `interpolated_gain_curve_unittest.cc`
+- `gain_applier_unittest.cc`
+- `limiter_unittest.cc`
+- `fixed_digital_level_estimator_unittest.cc`
+- `noise_level_estimator_unittest.cc`
+- `speech_level_estimator_unittest.cc`
+- `saturation_protector_unittest.cc`
+- `saturation_protector_buffer_unittest.cc`
+- `speech_probability_buffer_unittest.cc`
+- `adaptive_digital_gain_controller_unittest.cc`
+- `clipping_predictor_unittest.cc`
+- `clipping_predictor_level_buffer_unittest.cc`
+- `input_volume_controller_unittest.cc` → **deferred (AudioBuffer)**
+- `input_volume_stats_reporter_unittest.cc` → **deferred (metrics)**
+- `agc2_testing_common_unittest.cc`
+- `vad_wrapper_unittest.cc`
 
-**Files:**
-- `agc.cc` -> `agc1/agc.rs`
-- `agc_manager_direct.cc` -> `agc1/agc_manager.rs`
-- `loudness_histogram.cc` -> `agc1/loudness_histogram.rs`
-- `utility.cc` -> `agc1/utility.rs`
-- `legacy/analog_agc.cc` -> `agc1/analog_agc.rs`
-- `legacy/digital_agc.cc` -> `agc1/digital_agc.rs`
+### RNN VAD (15 tests in `tests/unit/agc2/rnn_vad/`)
+- `auto_correlation_unittest.cc`
+- `features_extraction_unittest.cc`
+- `lp_residual_unittest.cc`
+- `pitch_search_internal_unittest.cc`
+- `pitch_search_unittest.cc`
+- `ring_buffer_unittest.cc`
+- `rnn_fc_unittest.cc`
+- `rnn_gru_unittest.cc`
+- `rnn_unittest.cc`
+- `rnn_vad_unittest.cc`
+- `sequence_buffer_unittest.cc`
+- `spectral_features_internal_unittest.cc`
+- `spectral_features_unittest.cc`
+- `symmetric_matrix_buffer_unittest.cc`
+- `vector_math_unittest.cc`
 
-**Destination:**
+---
+
+## Verification
+
+```bash
+cargo nextest run -p webrtc-agc2       # All AGC2 tests pass
+cargo nextest run --workspace          # All workspace tests pass (199 + new)
+cargo clippy --workspace --all-targets # Zero warnings
 ```
-webrtc-agc/src/
-  agc1/
-    mod.rs
-    agc.rs
-    agc_manager.rs
-    loudness_histogram.rs
-    utility.rs
-    analog_agc.rs
-    digital_agc.rs
-```
-
-**Verification:**
-- [ ] `agc_manager_direct_unittest` matched
-- [ ] `loudness_histogram_unittest` matched
-
-**Commits:**
-1. `feat(rust): port AGC1 legacy digital and analog gain control`
-2. `feat(rust): port AGC1 manager and loudness histogram`
-
----
-
-## Phase 4 Completion Checklist
-
-- [ ] AGC2 fully ported: biquad, limiter, gain curves, level estimators, adaptive controller
-- [ ] RNN VAD fully ported: weights, NN layers, feature extraction, pitch search, model
-- [ ] AGC2 Input Volume Controller ported: clipping predictor, volume controller
-- [ ] AGC1 legacy fully ported: analog, digital, manager, histogram
-- [ ] All 33 AGC2 unit tests have Rust equivalents
-- [ ] All 2 AGC1 unit tests have Rust equivalents
-- [ ] All 15 RNN VAD unit tests have Rust equivalents
-- [ ] AVX2 vector math for RNN VAD is ported and verified
-- [ ] Proptest: RNN VAD speech probability matches within tolerance
-- [ ] Proptest: AGC2 gain computation matches within tolerance
-- [ ] C++ tests still pass
 
 ## Commit Summary
 
-| Order | Commit | Scope |
-|-------|--------|-------|
-| 1-3 | AGC2 building blocks | biquad, gain curves, limiter, gain applier |
-| 4-5 | AGC2 level estimators | fixed digital, noise, speech, saturation |
-| 6-11 | RNN VAD | weights, NN layers, features, pitch, model |
-| 12 | AGC2 adaptive controller | adaptive_digital_gain_controller |
-| 13-14 | AGC2 input volume | clipping predictor, volume controller |
-| 15 | AGC2 top-level | gain_controller2 |
-| 16-17 | AGC1 legacy | analog/digital AGC, manager |
+| # | Commit | Scope |
+|---|--------|-------|
+| 1 | `feat(rust): add webrtc-agc2 crate scaffold` | Scaffold + constants |
+| 2 | `feat(rust): port RNN VAD foundation` | Weights, activations, data structures |
+| 3 | `feat(rust): port RNN VAD neural network layers` | FC, GRU |
+| 4 | `feat(rust): port RNN VAD LP residual and auto-correlation` | Signal analysis |
+| 5 | `feat(rust): port RNN VAD spectral features` | PFFFT-based features |
+| 6 | `feat(rust): port RNN VAD pitch search` | Pitch detection |
+| 7 | `feat(rust): port RNN VAD feature extraction pipeline` | 42-dim feature vector |
+| 8 | `feat(rust): port RNN VAD model and wrapper` | RNN + VAD wrapper |
+| 9 | `feat(rust): port AGC2 biquad filter` | IIR filter |
+| 10 | `feat(rust): port AGC2 gain curves and gain applier` | Limiter curves + gain |
+| 11 | `feat(rust): port AGC2 level estimators` | Fixed, noise, speech |
+| 12 | `feat(rust): port AGC2 saturation protector` | Headroom management |
+| 13 | `feat(rust): port AGC2 adaptive digital gain controller` | Main adaptive logic |
+| 14 | `feat(rust): port AGC2 clipping predictor` | Clipping prediction |
 
 ---
 
@@ -398,5 +344,16 @@ webrtc-agc/src/
 | RNN weight precision loss | Low | Critical | Use exact f32 literals from C++ source; verify bit patterns |
 | Tanh approximation divergence | Medium | High | Test with exhaustive f32 range near breakpoints |
 | GRU gate computation order | Medium | High | Match C++ matrix multiply order exactly |
-| AGC1 integer overflow behavior | Medium | Medium | Use wrapping arithmetic; test with extreme gain values |
 | RNN VAD AVX2 accumulation order | Low | High | Compare dot product results against scalar at each step |
+
+---
+
+## Phase 4 Completion Checklist
+
+- [ ] AGC2 fully ported: biquad, limiter, gain curves, level estimators, adaptive controller
+- [ ] RNN VAD fully ported: weights, NN layers, feature extraction, pitch search, model
+- [ ] AGC2 clipping predictor ported
+- [ ] All 16 AGC2 core unit tests have Rust equivalents (excluding 2 deferred)
+- [ ] All 15 RNN VAD unit tests have Rust equivalents
+- [ ] SIMD via webrtc-simd dot_product verified
+- [ ] C++ tests still pass
