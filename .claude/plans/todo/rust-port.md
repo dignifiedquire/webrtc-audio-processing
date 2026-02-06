@@ -309,65 +309,21 @@ Note: AGC1 (`webrtc-agc`) is **not ported** — see Excluded Modules rationale.
 - [x] Port `noise_suppressor.cc` → `noise_suppressor.rs` (single-channel pipeline)
 - Deferred to Phase 7: multi-channel support (requires AudioBuffer), upper band processing
 
-### Phase 6: Echo Cancellation (6-8 weeks)
+### Phase 6: Echo Cancellation -- COMPLETE (21 steps, 172 tests, 61 files, ~15,800 lines)
 
-**6.1 AEC3 Foundation**
-- [ ] Port `aec3_common.cc` (constants, enums)
-- [ ] Port `aec3_fft.cc` (FFT wrapper)
-- [ ] Port `fft_data.cc` (complex FFT data)
-- [ ] Port `block.h` / `block_buffer.cc`
-- [ ] Port `spectrum_buffer.cc` / `fft_buffer.cc`
-
-**6.2 AEC3 Framing**
-- [ ] Port `block_delay_buffer.cc`
-- [ ] Port `frame_blocker.cc`
-- [ ] Port `block_framer.cc`
-- [ ] Port `decimator.cc`
-- [ ] Proptest: Frame blocking/deblocking
-
-**6.3 AEC3 Delay Estimation**
-- [ ] Port `downsampled_render_buffer.cc`
-- [ ] Port `matched_filter.cc` (with AVX2/SSE2)
-- [ ] Port `matched_filter_lag_aggregator.cc`
-- [ ] Port `echo_path_delay_estimator.cc`
-- [ ] Port `render_delay_controller.cc`
-- [ ] Port `render_delay_buffer.cc`
-- [ ] Proptest: Delay estimation accuracy
-
-**6.4 AEC3 Adaptive Filter**
-- [ ] Port `adaptive_fir_filter.cc` (with SSE2/AVX2/NEON)
-- [ ] Port `adaptive_fir_filter_erl.cc`
-- [ ] Port `coarse_filter_update_gain.cc`
-- [ ] Port `refined_filter_update_gain.cc`
-- [ ] Port `filter_analyzer.cc`
-- [ ] Port `subtractor.cc`
-- [ ] Proptest: Filter coefficient comparison
-
-**6.5 AEC3 Echo Estimation**
-- [ ] Port `erl_estimator.cc`
-- [ ] Port `erle_estimator.cc` / `fullband_erle_estimator.cc`
-- [ ] Port `signal_dependent_erle_estimator.cc`
-- [ ] Port `residual_echo_estimator.cc`
-- [ ] Port `reverb_model.cc` / `reverb_model_estimator.cc`
-- [ ] Proptest: ERLE/ERL estimation
-
-**6.6 AEC3 Suppression**
-- [ ] Port `render_signal_analyzer.cc`
-- [ ] Port `comfort_noise_generator.cc`
-- [ ] Port `suppression_gain.cc`
-- [ ] Port `suppression_filter.cc`
-- [ ] Port `dominant_nearend_detector.cc` / `subband_nearend_detector.cc`
-- [ ] Proptest: Suppression mask comparison
-
-**6.7 AEC3 State & Integration**
-- [ ] Port `aec_state.cc`
-- [ ] Port `echo_audibility.cc`
-- [ ] Port `echo_path_variability.cc`
-- [ ] Port `echo_remover.cc`
-- [ ] Port `block_processor.cc`
-- [ ] Port `echo_canceller3.cc`
-- [ ] Port `config_selector.cc`
-- [ ] Proptest: Full AEC3 pipeline
+- [x] `webrtc-aec3` crate: full echo cancellation pipeline
+- [x] Config, constants, FftData, Aec3Fft, Block, circular buffers
+- [x] Framing: frame_blocker, block_framer, block_delay_buffer
+- [x] Decimator, CascadedBiquadFilter, VectorMath, MovingAverage
+- [x] Delay estimation: MatchedFilter (SSE2/AVX2/NEON), lag aggregator, clockdrift, path delay estimator
+- [x] Render buffers: RenderBuffer, DownsampledRenderBuffer, RenderDelayBuffer, RenderDelayController
+- [x] Adaptive filter: AdaptiveFirFilter (SSE2/AVX2/NEON), ERL, coarse/refined gains, FilterAnalyzer, Subtractor
+- [x] Echo estimation: ERL/ERLE estimators, signal-dependent ERLE, residual echo, reverb models
+- [x] Signal analysis: render signal analyzer, stationarity estimator, multi-channel content detector
+- [x] Suppression: nearend detectors, suppression gain/filter, comfort noise generator
+- [x] State & integration: AecState, echo audibility, transparent mode, EchoRemover, BlockProcessor
+- [x] SIMD additions to webrtc-simd: elementwise_sqrt, elementwise_multiply, elementwise_accumulate, power_spectrum
+- Deferred to Phase 7: echo_canceller3.cc (top-level API, depends on AudioBuffer, SwapQueue, threading), config_selector.cc
 
 ### Phase 7: Audio Processing Integration (3-4 weeks)
 
@@ -530,6 +486,7 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 ## Success Criteria
 
 - [ ] All 2432 C++ tests pass when using Rust implementation
+
 - [ ] Property tests demonstrate equivalence for all components
 - [ ] Performance within 10% of C++ implementation
 - [ ] Builds on Linux x86_64, ARM64; macOS x86_64, ARM64; Windows x86_64
@@ -543,7 +500,7 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 
 - **C++ Source:** WebRTC M145 (branch-heads/7632)
 - **Library Version:** 3.0
-- **Test Count:** 2432 passing (C++), 364 passing (Rust, Phases 1-2, 4-5)
+- **Test Count:** 2432 passing (C++), 544 passing (Rust, Phases 1-2, 4-6)
 - **Build System:** Meson (C++), Cargo (Rust)
 - **C++ Standard:** C++20
 - **Rust Edition:** 2024, MSRV 1.91, resolver 3
