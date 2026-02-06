@@ -19,7 +19,7 @@ quickest way to build is:
 ```sh
 # Initialise into the build/ directory, for a prefixed install into the
 # install/ directory
-meson . build -Dprefix=$PWD/install
+meson setup build -Dprefix=$PWD/install
 
 # Run the actual build
 ninja -C build
@@ -30,6 +30,34 @@ ninja -C build install
 # The libraries, headers, and pkg-config files are now in the install/
 # directory
 ```
+
+# Testing
+
+The project includes a comprehensive test suite ported from upstream WebRTC.
+To build and run the tests:
+
+```sh
+# Configure with tests enabled
+meson setup builddir -Dtests=enabled
+
+# Build
+ninja -C builddir
+
+# Run all tests
+meson test -C builddir
+
+# Run tests with verbose output
+meson test -C builddir -v
+
+# Run a specific test
+./builddir/tests/apm_unit_tests --gtest_filter="TestName"
+
+# List all available tests
+./builddir/tests/apm_unit_tests --gtest_list_tests
+```
+
+The test suite requires Google Test and Google Mock, which are automatically
+fetched as subprojects if not found on the system.
 
 # Feedback
 
