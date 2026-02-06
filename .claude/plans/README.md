@@ -13,7 +13,23 @@ This directory contains implementation plans for webrtc-audio-processing develop
 
 | Plan | Description | Status |
 |------|-------------|--------|
-| [rust-port.md](todo/rust-port.md) | Full Rust port with C API, property tests, SIMD optimizations | Planning complete |
+| [rust-port.md](todo/rust-port.md) | Full Rust port master plan (overview) | Planning complete |
+| [rust-port/](todo/rust-port/) | Per-phase detailed plans (10 phases, ~101 commits) | Planning complete |
+
+#### Rust Port Phases
+
+| Phase | Plan | Duration | Status |
+|-------|------|----------|--------|
+| 1 | [Foundation Infrastructure](todo/rust-port/phase-01-foundation.md) | 2-3 weeks | Not Started |
+| 2 | [Common Audio Primitives](todo/rust-port/phase-02-common-audio.md) | 3-4 weeks | Not Started |
+| 3 | [Voice Activity Detection](todo/rust-port/phase-03-vad.md) | 2 weeks | Not Started |
+| 4 | [Automatic Gain Control](todo/rust-port/phase-04-agc.md) | 4-5 weeks | Not Started |
+| 5 | [Noise Suppression](todo/rust-port/phase-05-noise-suppression.md) | 2-3 weeks | Not Started |
+| 6 | [Echo Cancellation (AEC3)](todo/rust-port/phase-06-echo-cancellation.md) | 6-8 weeks | Not Started |
+| 7 | [Mobile Echo Control (AECM)](todo/rust-port/phase-07-aecm.md) | 1-2 weeks | Not Started |
+| 8 | [Audio Processing Integration](todo/rust-port/phase-08-integration.md) | 3-4 weeks | Not Started |
+| 9 | [C API & Final Integration](todo/rust-port/phase-09-c-api.md) | 2-3 weeks | Not Started |
+| 10 | [Documentation & Release](todo/rust-port/phase-10-docs-release.md) | 1-2 weeks | Not Started |
 
 ### Completed
 
@@ -37,4 +53,4 @@ Each plan should include:
 
 - **Current Version**: 3.0 (WebRTC M145)
 - **Test Count**: 2432 passing, 185 disabled
-- **Branch**: `upgrade-m145-v2` (pending merge to main)
+- **Branch**: main
