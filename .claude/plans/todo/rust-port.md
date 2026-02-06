@@ -19,11 +19,14 @@ Create a modular, fully-tested Rust port of the WebRTC Audio Processing library 
 
 ## Current Codebase Analysis
 
+**Source Version:** WebRTC M145 (branch-heads/7632), version 3.0
+
 ### Public API Surface (`webrtc/api/audio/audio_processing.h`)
 
-**Core Types:**
+**Core Types (M145 API):**
 - `AudioProcessing` - Main interface (refcounted)
-- `AudioProcessingBuilder` - Builder pattern for creating APM
+- `BuiltinAudioProcessingBuilder` - New builder pattern (M145+)
+- `Environment` - New configuration context (M145+)
 - `StreamConfig` - Sample rate, channels configuration
 - `ProcessingConfig` - Input/output stream configurations  
 - `AudioProcessing::Config` - Nested configuration struct with:
@@ -49,6 +52,13 @@ Create a modular, fully-tested Rust port of the WebRTC Audio Processing library 
 - `set_stream_delay_ms(int)` / `stream_delay_ms()`
 - `GetStatistics()` / `GetConfig()`
 - AEC dump methods
+
+**M145 API Changes (from M131):**
+- New `BuiltinAudioProcessingBuilder` replaces `AudioProcessingBuilder`
+- New `Environment` object required for creation via `CreateEnvironment()`
+- New `FieldTrials` configuration system
+- Namespace consolidation: `rtc::ArrayView` → `webrtc::ArrayView`, etc.
+- C++20 required (was C++17)
 
 ### Module Structure
 
@@ -157,7 +167,7 @@ webrtc/
 - **Mocks:** `tests/test_utils/mock/`
   - MockEchoRemover, MockRenderDelayBuffer, MockRenderDelayController, MockBlockProcessor
 - **Resources:** WAV files, protobuf reference data
-- **Current count:** 2458 tests passing
+- **Current count:** 2432 tests passing (M145)
 
 ## Rust Crate Architecture
 
@@ -680,10 +690,18 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 
 ## Success Criteria
 
-- [ ] All 2458+ C++ tests pass when using Rust implementation
+- [ ] All 2432 C++ tests pass when using Rust implementation
 - [ ] Property tests demonstrate equivalence for all components
 - [ ] Performance within 10% of C++ implementation
 - [ ] Builds on Linux x86_64, ARM64; macOS x86_64, ARM64; Windows x86_64
 - [ ] All SIMD paths (SSE2, AVX2, NEON) functional and verified
 - [ ] C API documented and usable from C/C++ projects
 - [ ] Published to crates.io with complete documentation
+
+## Reference
+
+- **C++ Source:** WebRTC M145 (branch-heads/7632)
+- **Library Version:** 3.0
+- **Test Count:** 2432 passing
+- **Build System:** Meson
+- **C++ Standard:** C++20
