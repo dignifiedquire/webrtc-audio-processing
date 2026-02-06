@@ -1,3 +1,38 @@
+Release 3.0
+-----------
+
+Bump to code from WebRTC M145 (branch-heads/7632) version.
+
+Breaking changes:
+
+  * C++20 is now required (previously C++17)
+  * New Environment API: AudioProcessing is now created via
+    BuiltinAudioProcessingBuilder and requires an Environment object
+  * Namespace consolidation: Some types moved from rtc:: to webrtc:: namespace
+    (ArrayView, scoped_refptr, split, etc.)
+
+Changes include:
+
+  * Various improvements to AEC3, AGC2, and noise suppression
+  * New BuiltinAudioProcessingBuilder for creating AudioProcessing instances
+  * New Environment and FieldTrials configuration system
+  * Updated RNN VAD model for improved voice activity detection
+  * Performance improvements across multiple platforms
+  * Updated patches for BSD, MinGW, MSVC compatibility
+  * Several upstream patches are now integrated (abseil-cpp 202508, gcc-15)
+
+API migration guide:
+
+  Before (M131):
+    auto apm = webrtc::AudioProcessingBuilder()
+        .SetConfig(config)
+        .Create();
+
+  After (M145):
+    webrtc::Environment env = webrtc::CreateEnvironment();
+    auto apm = webrtc::BuiltinAudioProcessingBuilder(config).Build(env);
+
+
 Release 2.1
 -----------
 
