@@ -10,7 +10,12 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:chromium.googlesource.com)",
       "WebFetch(domain:cs.chromium.org)",
-      "WebFetch(domain:source.chromium.org)"
+      "WebFetch(domain:source.chromium.org)",
+      "WebFetch(domain:crates.io)",
+      "WebFetch(domain:lib.rs)",
+      "WebFetch(domain:shnatsel.medium.com)",
+      "WebFetch(domain:cxx.rs)",
+      "WebFetch(domain:docs.rs)"
     ]
   }
 }
