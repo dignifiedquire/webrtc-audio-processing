@@ -5,7 +5,7 @@
 Create a modular, fully-tested Rust port of the WebRTC Audio Processing library that exposes a C-compatible API. The port maintains bit-exact compatibility with the original C++ implementation through property-based testing.
 
 **Goals:**
-- 1:1 port of all publicly exposed functionality
+- Port the modern audio processing pipeline (AEC3, AGC2, NS)
 - Modular multi-crate architecture
 - Full test coverage via property tests comparing Rust output against C++ reference
 - All SIMD optimizations (SSE2, AVX2, NEON) preserved
@@ -16,6 +16,20 @@ Create a modular, fully-tested Rust port of the WebRTC Audio Processing library 
 - Rewriting tests in Rust (tests remain in C++)
 - Changing algorithms or behavior
 - Adding new features
+- Porting legacy/deprecated modules (AECM, AGC1) — see rationale below
+
+**Excluded Modules (rationale):**
+- **AECM (Echo Control Mobile):** Disabled by default (`mobile_mode = false`). Deleted
+  upstream on M145 main (Jan 2026) — will be absent in M146. AEC3 is the recommended
+  replacement. Ring buffer was its only consumer.
+- **AGC1 (GainController1 / legacy AGC):** Disabled by default. Deeply entangled with
+  the fixed-point SPL library (30+ C files). AGC2 is the recommended replacement.
+  TODO `bugs.webrtc.org/7494` tracks eventual removal. The `kAdaptiveAnalog` mode
+  (HAL mic gain control) has no AGC2 equivalent yet, but applications are expected
+  to migrate to AGC2's `InputVolumeController`.
+- **SPL (Signal Processing Library):** 30+ files of fixed-point `int16_t`/`int32_t`
+  arithmetic used only by AECM, AGC1, and VAD filterbank. The modern pipeline
+  (AEC3, AGC2, NS) uses none of it. Skipping saves ~3 weeks of porting effort.
 
 ## Current Codebase Analysis
 
@@ -186,16 +200,18 @@ rust-version = "1.91"
 webrtc-apm (main crate, C API)
   +-- webrtc-common-audio + tracing
   +-- webrtc-aec3 + webrtc-simd + tracing
-  +-- webrtc-aecm + tracing
-  +-- webrtc-agc + webrtc-simd + webrtc-vad + tracing
+  +-- webrtc-agc2 + webrtc-simd + tracing
   +-- webrtc-ns + tracing
   +-- webrtc-vad + tracing
   +-- webrtc-simd
+  +-- webrtc-ring-buffer
 
 Testing crates (publish = false):
   webrtc-apm-sys      -- cxx FFI to C++ (feature: cxx-bridge)
   webrtc-apm-proptest -- proptest + test-strategy generators
 ```
+
+Note: `webrtc-aecm` and `webrtc-agc` (AGC1) crates removed — see Excluded Modules.
 
 ## Phased Implementation Plan
 
@@ -210,19 +226,16 @@ Testing crates (publish = false):
 - [x] Docs: `docs.rs` metadata with `--cfg docsrs` for feature-gated items
 - [x] 11 commits, 34 Rust tests passing
 
-### Phase 2: Common Audio Primitives (3-4 weeks)
+### Phase 2: Common Audio Primitives (2-3 weeks)
 
-**2.1 Ring Buffer**
-- [ ] Port `ring_buffer.c` to Rust
-- [ ] Proptest: Compare with C++ implementation
+**2.1 Ring Buffer** -- COMPLETE
+- [x] Port `ring_buffer.c` as standalone `webrtc-ring-buffer` crate
+- [x] 16 tests (unit + proptest)
 
-**2.2 Signal Processing Library**
-- [ ] Port basic operations (`copy_set_operations`, `min_max_operations`)
-- [ ] Port FFT-related (`complex_bit_reverse`, `complex_fft`, `real_fft`)
-- [ ] Port filtering (`filter_ar`, `filter_ma`)
-- [ ] Port resampling (`resample`, `resample_by_2`, `resample_fractional`)
-- [ ] Port math operations (`spl_sqrt`, `division_operations`)
-- [ ] Port cross-correlation (with NEON optimization)
+**2.2 Audio Utilities**
+- [ ] Port `audio_util.h` conversions (int16/float, scaling)
+- [ ] Port `channel_buffer.cc` (multi-channel buffer)
+- [ ] Port `smoothing_filter.cc` (exponential smoothing)
 - [ ] Proptest: Each function against C++ reference
 
 **2.3 FIR Filter**
@@ -234,17 +247,19 @@ Testing crates (publish = false):
 - [ ] Proptest: Verify bitexact output
 
 **2.4 Resampler**
-- [ ] Port `Resampler` class
 - [ ] Port `SincResampler` (scalar)
 - [ ] Port `SincResampler` SIMD variants
 - [ ] Port `PushResampler` / `PushSincResampler`
 - [ ] Proptest: Input/output comparison
 
 **2.5 FFT Wrappers**
-- [ ] Port Ooura 128/256 FFT
-- [ ] Integrate PFFFT (via crate or port)
+- [ ] Port Ooura 128/256 FFT (used by AEC3, NS)
+- [ ] Integrate PFFFT via `cc` crate (used by NS)
 - [ ] Port `pffft_wrapper.cc`
 - [ ] Proptest: Forward/inverse FFT identity
+
+Note: Signal Processing Library (30+ fixed-point C files) is **not ported** —
+used only by AECM, AGC1, and VAD filterbank. See Excluded Modules rationale.
 
 ### Phase 3: Voice Activity Detection (2 weeks)
 
@@ -261,16 +276,11 @@ Testing crates (publish = false):
 - [ ] Port pitch-based VAD components
 - [ ] Proptest: Multi-frame comparison
 
-### Phase 4: Automatic Gain Control (4-5 weeks)
+### Phase 4: Automatic Gain Control — AGC2 only (3-4 weeks)
 
-**4.1 AGC1 Legacy (`webrtc-agc`)**
-- [ ] Port `analog_agc.cc`
-- [ ] Port `digital_agc.cc`
-- [ ] Port `gain_control.h` interface
-- [ ] Port loudness histogram
-- [ ] Proptest: Gain computation comparison
+Note: AGC1 (`webrtc-agc`) is **not ported** — see Excluded Modules rationale.
 
-**4.2 AGC2 Core**
+**4.1 AGC2 Core**
 - [ ] Port `limiter_db_gain_curve.cc`
 - [ ] Port `interpolated_gain_curve.cc`
 - [ ] Port `limiter.cc`
@@ -278,7 +288,7 @@ Testing crates (publish = false):
 - [ ] Port `biquad_filter.cc`
 - [ ] Proptest: Each component
 
-**4.3 AGC2 Adaptive Digital**
+**4.2 AGC2 Adaptive Digital**
 - [ ] Port `fixed_digital_level_estimator.cc`
 - [ ] Port `noise_level_estimator.cc`
 - [ ] Port `speech_level_estimator.cc`
@@ -286,14 +296,14 @@ Testing crates (publish = false):
 - [ ] Port `adaptive_digital_gain_controller.cc`
 - [ ] Proptest: Level estimation comparison
 
-**4.4 AGC2 Input Volume Controller**
+**4.3 AGC2 Input Volume Controller**
 - [ ] Port `clipping_predictor.cc`
 - [ ] Port `clipping_predictor_level_buffer.cc`
 - [ ] Port `input_volume_controller.cc`
 - [ ] Port `input_volume_stats_reporter.cc`
 - [ ] Proptest: Clipping detection, volume recommendations
 
-**4.5 RNN VAD**
+**4.4 RNN VAD**
 - [ ] Port `rnn_vad_weights.cc` (weight tables)
 - [ ] Port `rnn_activations.h` (tanh approximation, etc.)
 - [ ] Port `rnn_fc.cc` / `rnn_gru.cc` (neural network layers)
@@ -376,39 +386,27 @@ Testing crates (publish = false):
 - [ ] Port `config_selector.cc`
 - [ ] Proptest: Full AEC3 pipeline
 
-### Phase 7: Mobile Echo Control (1-2 weeks)
+### Phase 7: Audio Processing Integration (3-4 weeks)
 
-**7.1 AECM (`webrtc-aecm`)**
-- [ ] Port `aecm_core.cc` (scalar)
-- [ ] Port NEON optimizations
-- [ ] Port `echo_control_mobile.cc`
-- [ ] Proptest: AECM output comparison
-
-### Phase 8: Audio Processing Integration (3-4 weeks)
-
-**8.1 Audio Buffer & Utilities**
+**7.1 Audio Buffer & Utilities**
 - [ ] Port `audio_buffer.cc`
 - [ ] Port `AudioFrame` handling
-- [ ] Port `audio_util.h` conversions
-- [ ] Port `channel_buffer.cc`
 
-**8.2 Component Wrappers**
+**7.2 Component Wrappers**
 - [ ] Port `high_pass_filter.cc`
-- [ ] Port `gain_control_impl.cc`
 - [ ] Port `gain_controller2.cc`
-- [ ] Port `echo_control_mobile_impl.cc`
 - [ ] Port `residual_echo_detector.cc`
 - [ ] Port `splitting_filter.cc` / `three_band_filter_bank.cc`
 - [ ] Port level adjustment components
 
-**8.3 Main Implementation**
+**7.3 Main Implementation**
 - [ ] Port `audio_processing_impl.cc`
 - [ ] Port `audio_processing_builder_impl.cc`
 - [ ] Proptest: Full ProcessStream comparison
 
-### Phase 9: C API & Final Integration (2-3 weeks)
+### Phase 8: C API & Final Integration (2-3 weeks)
 
-**9.1 C API Design**
+**8.1 C API Design**
 ```c
 // Example C API
 typedef struct WapAudioProcessing WapAudioProcessing;
@@ -440,26 +438,26 @@ int wap_process_stream_f32(
 // Similar for ProcessReverseStream, config getters/setters, etc.
 ```
 
-**9.2 Implementation**
+**8.2 Implementation**
 - [ ] Define C API in `crates/webrtc-apm/src/ffi.rs`
 - [ ] Generate C headers with cbindgen
 - [ ] Implement all C API functions
 - [ ] Create pkg-config file
 
-**9.3 Integration Testing**
+**8.3 Integration Testing**
 - [ ] Modify C++ tests to optionally use Rust library via C API
 - [ ] Verify all 2458 tests pass with Rust implementation
 - [ ] Performance benchmarking vs C++ implementation
 
-### Phase 10: Documentation & Release (1-2 weeks)
+### Phase 9: Documentation & Release (1-2 weeks)
 
-**10.1 Documentation**
+**9.1 Documentation**
 - [ ] API documentation (rustdoc)
 - [ ] C API documentation
 - [ ] Migration guide from C++ library
 - [ ] Architecture documentation
 
-**10.2 Release Preparation**
+**9.2 Release Preparation**
 - [ ] Version 0.1.0 release
 - [ ] Publish to crates.io
 - [ ] Create release binaries for major platforms
@@ -562,7 +560,7 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 
 - **C++ Source:** WebRTC M145 (branch-heads/7632)
 - **Library Version:** 3.0
-- **Test Count:** 2432 passing (C++), 34 passing (Rust, Phase 1)
+- **Test Count:** 2432 passing (C++), 50 passing (Rust, Phase 1 + ring buffer)
 - **Build System:** Meson (C++), Cargo (Rust)
 - **C++ Standard:** C++20
 - **Rust Edition:** 2024, MSRV 1.91, resolver 3

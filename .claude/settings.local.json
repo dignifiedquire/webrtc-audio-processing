@@ -15,7 +15,9 @@
       "WebFetch(domain:lib.rs)",
       "WebFetch(domain:shnatsel.medium.com)",
       "WebFetch(domain:cxx.rs)",
-      "WebFetch(domain:docs.rs)"
+      "WebFetch(domain:docs.rs)",
+      "WebFetch(domain:issues.webrtc.org)",
+      "WebFetch(domain:groups.google.com)"
     ]
   }
 }
