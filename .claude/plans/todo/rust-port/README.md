@@ -12,10 +12,10 @@
 | Phase | Name | Duration | Commits | Dependencies | Status |
 |-------|------|----------|---------|--------------|--------|
 | 1 | [Foundation Infrastructure](phase-01-foundation.md) | ~1 week | 11 | None | **Complete** |
-| 2 | [Common Audio Primitives](phase-02-common-audio.md) | 2-3 weeks | 15 | Phase 1 | In Progress |
+| 2 | [Common Audio Primitives](phase-02-common-audio.md) | ~3 weeks | 10 | Phase 1 | **Complete** (SIMD pending) |
 | 3 | [Voice Activity Detection](phase-03-vad.md) | 2 weeks | 5 | Phase 2 | Not Started |
 | 4 | [Automatic Gain Control (AGC2)](phase-04-agc.md) | 3-4 weeks | 13 | Phase 2, 3 | Not Started |
-| 5 | [Noise Suppression](phase-05-noise-suppression.md) | 2-3 weeks | 6 | Phase 2 | Not Started |
+| 5 | [Noise Suppression](phase-05-noise-suppression.md) | 2-3 weeks | 6 | Phase 2 | **Next** |
 | 6 | [Echo Cancellation (AEC3)](phase-06-echo-cancellation.md) | 6-8 weeks | 20 | Phase 2 | Not Started |
 | 7 | [Audio Processing Integration](phase-07-integration.md) | 3-4 weeks | 11 | Phases 2-6 | Not Started |
 | 8 | [C API & Final Integration](phase-08-c-api.md) | 2-3 weeks | 7 | Phase 7 | Not Started |
@@ -31,13 +31,13 @@ See [master plan](../rust-port.md) for rationale.
 Phase 1 (Foundation) ---- COMPLETE
   |
   v
-Phase 2 (Common Audio) -- IN PROGRESS
+Phase 2 (Common Audio) -- COMPLETE
   |
   +---> Phase 3 (VAD) --+
   |                      |
-  +---> Phase 4 (AGC2) <-+
+  +---> Phase 4 (AGC2) <-+  (AGC2 has own RNN VAD, core VAD dependency TBD)
   |
-  +---> Phase 5 (NS)
+  +---> Phase 5 (NS) ---- NEXT
   |
   +---> Phase 6 (AEC3)
   |
@@ -51,7 +51,7 @@ Phase 8 (C API)
 Phase 9 (Docs & Release)
 ```
 
-Phases 3-6 can be worked on in parallel after Phase 2 completes (except Phase 4 depends on Phase 3 for core VAD).
+Phases 3-6 can be worked on in parallel after Phase 2 completes. Phase 5 (NS) is self-contained — no VAD, AGC, or SPL dependency. Phase 4 (AGC2) nominally depends on Phase 3, but AGC2 has its own RNN VAD, so the dependency may be loose.
 
 ## Technology Stack (Finalized in Phase 1)
 
@@ -64,7 +64,7 @@ Phases 3-6 can be worked on in parallel after Phase 2 completes (except Phase 4 
 | Property testing | `proptest` + `test-strategy` | `#[derive(Arbitrary)]`, `#[proptest]` |
 | Test runner | `cargo nextest` | NOT `cargo test` |
 | C header generation | `cbindgen` | Phase 9 |
-| FFT (bit-exact) | `pffft.c` via `cc` crate | Phase 2 |
+| FFT | Pure Rust `webrtc-fft` crate | Ooura 128, fft4g, PFFFT (scalar) |
 | Benchmarking | `criterion` | |
 | Docs | `docs.rs` with `--cfg docsrs` | `all-features = true` |
 
@@ -93,11 +93,12 @@ mod_module_files = "deny"
 ```
 webrtc-apm (main crate, C API)
   +-- webrtc-common-audio + tracing
-  +-- webrtc-aec3 + webrtc-simd + tracing
-  +-- webrtc-agc2 + webrtc-simd + tracing
-  +-- webrtc-ns + tracing
+  +-- webrtc-aec3 + webrtc-simd + webrtc-fft + tracing
+  +-- webrtc-agc2 + webrtc-simd + webrtc-fft + tracing
+  +-- webrtc-ns + webrtc-fft + tracing
   +-- webrtc-vad + tracing
   +-- webrtc-simd
+  +-- webrtc-fft
   +-- webrtc-ring-buffer
 
 Testing crates (publish = false):

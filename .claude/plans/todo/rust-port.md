@@ -155,10 +155,9 @@ webrtc/
 ### Third-Party Dependencies
 
 1. **PFFFT** (`webrtc/third_party/pffft/`)
-   - Single C file FFT library
-   - Supports SSE, Altivec, NEON
-   - Used for 128+ point FFTs
-   - **Rust strategy:** Use existing `pffft` crate or port
+   - Single C file FFT library (scalar path ~3000 lines)
+   - Supports SSE, Altivec, NEON in C; composite sizes (2^a * 3^b * 5^c)
+   - **Rust:** Ported as pure Rust scalar in `webrtc-fft` crate (SIMD deferred to Phase 4)
 
 2. **RNNoise** (`webrtc/third_party/rnnoise/`)
    - Neural network weights (`rnn_vad_weights.cc/h`)
@@ -167,8 +166,8 @@ webrtc/
 
 3. **Ooura FFT** (`webrtc/common_audio/third_party/ooura/`)
    - 128-point and 256-point FFT implementations
-   - Has SSE2 and NEON variants
-   - **Rust strategy:** Port directly or use `rustfft`
+   - Has SSE2 and NEON variants for 128-point
+   - **Rust:** Ported as pure Rust in `webrtc-fft` crate (SSE2/NEON SIMD pending)
 
 ### Test Infrastructure (142 test files)
 
@@ -199,11 +198,12 @@ rust-version = "1.91"
 ```
 webrtc-apm (main crate, C API)
   +-- webrtc-common-audio + tracing
-  +-- webrtc-aec3 + webrtc-simd + tracing
-  +-- webrtc-agc2 + webrtc-simd + tracing
-  +-- webrtc-ns + tracing
+  +-- webrtc-aec3 + webrtc-simd + webrtc-fft + tracing
+  +-- webrtc-agc2 + webrtc-simd + webrtc-fft + tracing
+  +-- webrtc-ns + webrtc-fft + tracing
   +-- webrtc-vad + tracing
   +-- webrtc-simd
+  +-- webrtc-fft
   +-- webrtc-ring-buffer
 
 Testing crates (publish = false):
@@ -226,40 +226,30 @@ Note: `webrtc-aecm` and `webrtc-agc` (AGC1) crates removed — see Excluded Modu
 - [x] Docs: `docs.rs` metadata with `--cfg docsrs` for feature-gated items
 - [x] 11 commits, 34 Rust tests passing
 
-### Phase 2: Common Audio Primitives (2-3 weeks)
+### Phase 2: Common Audio Primitives -- COMPLETE (~3 weeks, 10 commits, 128 Rust tests)
 
 **2.1 Ring Buffer** -- COMPLETE
-- [x] Port `ring_buffer.c` as standalone `webrtc-ring-buffer` crate
-- [x] 16 tests (unit + proptest)
+- [x] Port `ring_buffer.c` as standalone `webrtc-ring-buffer` crate (16 tests)
 
-**2.2 Audio Utilities**
-- [ ] Port `audio_util.h` conversions (int16/float, scaling)
-- [ ] Port `channel_buffer.cc` (multi-channel buffer)
-- [ ] Port `smoothing_filter.cc` (exponential smoothing)
-- [ ] Proptest: Each function against C++ reference
+**2.2 Audio Utilities** -- COMPLETE
+- [x] Port `audio_util.h` conversions (int16/float, scaling)
+- [x] Port `channel_buffer.cc` (multi-channel, multi-band buffer)
+- Deferred: `smoothing_filter.cc` (no downstream consumer in modern pipeline)
 
-**2.3 FIR Filter**
-- [ ] Port scalar implementation (`fir_filter_c.cc`)
-- [ ] Port SSE implementation
-- [ ] Port AVX2 implementation
-- [ ] Port NEON implementation
-- [ ] Factory with runtime dispatch
-- [ ] Proptest: Verify bitexact output
+**2.3 FIR Filter** -- DEFERRED to Phase 6 (AEC3)
+- Only consumed by AEC3, will be ported alongside it
 
-**2.4 Resampler**
-- [ ] Port `SincResampler` (scalar)
-- [ ] Port `SincResampler` SIMD variants
-- [ ] Port `PushResampler` / `PushSincResampler`
-- [ ] Proptest: Input/output comparison
+**2.4 Resampler** -- COMPLETE
+- [x] Port `SincResampler` with SIMD convolution via `webrtc-simd`
+- [x] Port `PushSincResampler` and `PushResampler`
 
-**2.5 FFT Wrappers**
-- [ ] Port Ooura 128/256 FFT (used by AEC3, NS)
-- [ ] Integrate PFFFT via `cc` crate (used by NS)
-- [ ] Port `pffft_wrapper.cc`
-- [ ] Proptest: Forward/inverse FFT identity
-
-Note: Signal Processing Library (30+ fixed-point C files) is **not ported** —
-used only by AECM, AGC1, and VAD filterbank. See Excluded Modules rationale.
+**2.5 FFT** -- COMPLETE (scalar), SSE2/NEON SIMD pending
+- [x] Pure Rust `webrtc-fft` crate (no `cc` crate, no C code)
+- [x] Ooura 128-point FFT (scalar) + 6 unit + 3 proptests
+- [x] Ooura fft4g variable-size FFT (scalar only in C++) + 3 unit + 3 proptests
+- [x] PFFFT scalar (pure Rust port of pffft.c) + 10 unit + 4 proptests
+- [ ] Ooura 128 SSE2 SIMD (4 inner functions)
+- [ ] Ooura 128 NEON SIMD (4 inner functions)
 
 ### Phase 3: Voice Activity Detection (2 weeks)
 
@@ -497,8 +487,8 @@ For algorithms requiring exact output (e.g., integer processing):
 
 ```bash
 cargo build --workspace                    # Build
-cargo nextest run                          # Test (34 tests currently)
-cargo clippy --all-targets                 # Lint (zero warnings required)
+cargo nextest run --workspace              # Test (128 tests currently)
+cargo clippy --workspace --all-targets     # Lint (zero warnings required)
 meson test -C builddir                     # C++ tests still pass
 ```
 
@@ -560,7 +550,7 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 
 - **C++ Source:** WebRTC M145 (branch-heads/7632)
 - **Library Version:** 3.0
-- **Test Count:** 2432 passing (C++), 50 passing (Rust, Phase 1 + ring buffer)
+- **Test Count:** 2432 passing (C++), 128 passing (Rust, Phases 1-2)
 - **Build System:** Meson (C++), Cargo (Rust)
 - **C++ Standard:** C++20
 - **Rust Edition:** 2024, MSRV 1.91, resolver 3
