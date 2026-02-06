@@ -14,10 +14,8 @@
 
 #if WEBRTC_ENABLE_PROTOBUF
 
-#include "third_party/protobuf/src/google/protobuf/message_lite.h"  // nogncheck
-// IWYU pragma: begin_keep
-#include "third_party/protobuf/src/google/protobuf/repeated_field.h"  // nogncheck
-// IWYU pragma: end_keep
+#include <google/protobuf/message_lite.h>
+#include <google/protobuf/repeated_field.h>
 
 namespace webrtc {
 

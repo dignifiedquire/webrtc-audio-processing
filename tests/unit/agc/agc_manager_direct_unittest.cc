@@ -33,7 +33,7 @@
 #include "webrtc/rtc_base/checks.h"
 #include "webrtc/rtc_base/numerics/safe_minmax.h"
 #include "webrtc/rtc_base/strings/string_builder.h"
-#include "test/create_test_field_trials.h"
+#include "tests/test_utils/create_test_field_trials.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include "tests/test_utils/file_utils.h"

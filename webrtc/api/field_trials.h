@@ -12,6 +12,7 @@
 #define API_FIELD_TRIALS_H_
 
 #include <atomic>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -21,7 +22,6 @@
 #include "api/field_trials_registry.h"
 #include "api/field_trials_view.h"
 #include "rtc_base/checks.h"
-#include "rtc_base/containers/flat_map.h"
 
 namespace webrtc {
 
@@ -88,7 +88,7 @@ class FieldTrials : public FieldTrialsRegistry {
   }
 
  private:
-  explicit FieldTrials(flat_map<std::string, std::string> key_value_map)
+  explicit FieldTrials(std::map<std::string, std::string> key_value_map)
       : key_value_map_(std::move(key_value_map)) {}
 
   std::string GetValue(absl::string_view key) const override;
@@ -101,7 +101,7 @@ class FieldTrials : public FieldTrialsRegistry {
   mutable std::atomic<bool> get_value_called_ = false;
 #endif
 
-  flat_map<std::string, std::string> key_value_map_;
+  std::map<std::string, std::string> key_value_map_;
 };
 
 template <typename Sink>

@@ -16,7 +16,7 @@
 #include "webrtc/api/array_view.h"
 #include "webrtc/modules/audio_processing/agc2/cpu_features.h"
 #include "webrtc/modules/audio_processing/agc2/rnn_vad/test_utils.h"
-#include "webrtc/modules/audio_processing/test/performance_timer.h"
+#include "tests/test_utils/performance_timer.h"
 #include "webrtc/rtc_base/logging.h"
 #include <gtest/gtest.h>
 #include "third_party/rnnoise/src/rnn_vad_weights.h"

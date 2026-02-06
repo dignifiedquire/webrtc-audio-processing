@@ -8,8 +8,8 @@
  *  be found in the AUTHORS file in the root of the source tree.
  */
 
-#ifndef TEST_TESTSUPPORT_RTC_EXPECT_DEATH_H_
-#define TEST_TESTSUPPORT_RTC_EXPECT_DEATH_H_
+#ifndef TESTS_TEST_UTILS_RTC_EXPECT_DEATH_H_
+#define TESTS_TEST_UTILS_RTC_EXPECT_DEATH_H_
 
 #include <gtest/gtest.h>
 
@@ -20,4 +20,4 @@
 #define RTC_EXPECT_DEATH(statement, regex) EXPECT_DEATH(statement, "")
 #endif
 
-#endif  // TEST_TESTSUPPORT_RTC_EXPECT_DEATH_H_
+#endif  // TESTS_TEST_UTILS_RTC_EXPECT_DEATH_H_

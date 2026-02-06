@@ -15,7 +15,7 @@
 
 #include "api/array_view.h"
 #include "modules/audio_processing/agc/agc.h"
-#include "test/gmock.h"
+#include <gmock/gmock.h>
 
 namespace webrtc {
 

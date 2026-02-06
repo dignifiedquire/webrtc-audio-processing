@@ -14,7 +14,7 @@
 
 #include "webrtc/rtc_base/checks.h"  // RTC_DCHECK_IS_ON
 #include <gtest/gtest.h>
-#include "test/testsupport/rtc_expect_death.h"
+#include "tests/test_utils/rtc_expect_death.h"
 
 // Quality testing of PushResampler is done in audio/remix_resample_unittest.cc.
 

@@ -30,13 +30,13 @@
 #include "webrtc/modules/audio_processing/aec3/aec3_common.h"
 #include "webrtc/modules/audio_processing/aec3/block.h"
 #include "webrtc/modules/audio_processing/aec3/block_processor.h"
-#include "webrtc/modules/audio_processing/aec3/mock/mock_block_processor.h"
+#include "tests/test_utils/mock/mock_block_processor.h"
 #include "webrtc/modules/audio_processing/audio_buffer.h"
 #include "webrtc/modules/audio_processing/high_pass_filter.h"
 #include "webrtc/modules/audio_processing/logging/apm_data_dumper.h"
 #include "webrtc/rtc_base/checks.h"
 #include "webrtc/rtc_base/strings/string_builder.h"
-#include "test/create_test_field_trials.h"
+#include "tests/test_utils/create_test_field_trials.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

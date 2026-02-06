@@ -6,6 +6,8 @@ api_sources = [
   'audio/channel_layout.cc',
   'audio/echo_canceller3_config.cc',
   'environment/environment_factory.cc',
+  'field_trials.cc',
+  'field_trials_registry.cc',
   'rtc_event_log/rtc_event_log.cc',
   'rtp_headers.cc',
   'rtp_packet_info.cc',

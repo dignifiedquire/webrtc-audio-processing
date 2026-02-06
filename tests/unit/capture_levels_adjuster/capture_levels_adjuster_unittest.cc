@@ -14,7 +14,7 @@
 #include <tuple>
 
 #include "webrtc/modules/audio_processing/audio_buffer.h"
-#include "webrtc/modules/audio_processing/test/audio_buffer_tools.h"
+#include "tests/test_utils/audio_buffer_tools.h"
 #include <gtest/gtest.h>
 
 namespace webrtc {

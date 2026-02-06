@@ -10,6 +10,7 @@
 
 #include "api/field_trials.h"
 
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -19,7 +20,6 @@
 #include "absl/strings/string_view.h"
 #include "api/field_trials_registry.h"
 #include "rtc_base/checks.h"
-#include "rtc_base/containers/flat_map.h"
 
 namespace webrtc {
 namespace {
@@ -36,7 +36,7 @@ absl::string_view NextKeyOrValue(absl::string_view& s) {
 }
 
 bool Parse(absl::string_view s,
-           flat_map<std::string, std::string>& key_value_map) {
+           std::map<std::string, std::string>& key_value_map) {
   while (!s.empty()) {
     absl::string_view key = NextKeyOrValue(s);
     absl::string_view value = NextKeyOrValue(s);
@@ -57,7 +57,7 @@ bool Parse(absl::string_view s,
 
 absl_nullable std::unique_ptr<FieldTrials> FieldTrials::Create(
     absl::string_view s) {
-  flat_map<std::string, std::string> key_value_map;
+  std::map<std::string, std::string> key_value_map;
   if (!Parse(s, key_value_map)) {
     return nullptr;
   }
@@ -108,10 +108,11 @@ void FieldTrials::Set(absl::string_view trial, absl::string_view group) {
   RTC_CHECK(!trial.empty());
   RTC_CHECK_EQ(trial.find('/'), absl::string_view::npos);
   RTC_CHECK_EQ(group.find('/'), absl::string_view::npos);
+  std::string trial_str(trial);
   if (group.empty()) {
-    key_value_map_.erase(trial);
+    key_value_map_.erase(trial_str);
   } else {
-    key_value_map_.insert_or_assign(trial, group);
+    key_value_map_.insert_or_assign(trial_str, std::string(group));
   }
 }
 
@@ -119,7 +120,7 @@ std::string FieldTrials::GetValue(absl::string_view key) const {
 #if RTC_DCHECK_IS_ON
   get_value_called_ = true;
 #endif
-  auto it = key_value_map_.find(key);
+  auto it = key_value_map_.find(std::string(key));
   if (it != key_value_map_.end()) {
     return it->second;
   }

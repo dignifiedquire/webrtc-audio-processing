@@ -38,6 +38,7 @@ endif
 test_utils_sources = files(
   'test_utils/audio_buffer_tools.cc',
   'test_utils/bitexactness_tools.cc',
+  'test_utils/create_test_field_trials.cc',
   'test_utils/file_utils.cc',
   'test_utils/input_audio_file.cc',
   'test_utils/echo_canceller_test_tools.cc',
@@ -66,11 +67,16 @@ if have_protobuf
   test_utils_lib_deps += protobuf_dep
 endif
 
+test_utils_cxxflags = common_cxxflags + ['-DWEBRTC_TEST_RESOURCES_DIR="@0@"'.format(test_resources_dir), '-DWEBRTC_APM_DEBUG_DUMP=0', '-DWEBRTC_AUDIOPROC_FLOAT_PROFILE']
+if have_protobuf
+  test_utils_cxxflags += '-DWEBRTC_ENABLE_PROTOBUF=1'
+endif
+
 test_utils_lib = static_library('test_utils',
   test_utils_sources + mock_sources + protobuf_utils_sources + proto_sources,
   dependencies: test_utils_lib_deps,
   include_directories: [webrtc_inc, tests_inc],
-  cpp_args: common_cxxflags + ['-DWEBRTC_TEST_RESOURCES_DIR="@0@"'.format(test_resources_dir), '-DWEBRTC_APM_DEBUG_DUMP=0', '-DWEBRTC_AUDIOPROC_FLOAT_PROFILE'],
+  cpp_args: test_utils_cxxflags,
 )
 
 test_utils_dep = declare_dependency(
@@ -82,9 +88,12 @@ test_utils_dep = declare_dependency(
 # Additional sources needed for tests (not exported from library due to hidden visibility)
 common_audio_test_sources = files(
   '../webrtc/api/audio/echo_detector_creator.cc',
+  '../webrtc/rtc_base/cpu_info.cc',
   '../webrtc/rtc_base/system/file_wrapper.cc',
   '../webrtc/system_wrappers/source/cpu_features.cc',
   '../webrtc/common_audio/channel_buffer.cc',
+  '../webrtc/common_audio/wav_file.cc',
+  '../webrtc/common_audio/wav_header.cc',
   '../webrtc/common_audio/fir_filter_c.cc',
   '../webrtc/common_audio/fir_filter_factory.cc',
   '../webrtc/common_audio/fir_filter_neon.cc',
@@ -276,11 +285,16 @@ if absl_flags_parse_dep.found()
   apm_unit_tests_deps += absl_flags_parse_dep
 endif
 
+unit_tests_cxxflags = common_cxxflags + ['-DWEBRTC_APM_DEBUG_DUMP=0', '-DWEBRTC_AUDIOPROC_FLOAT_PROFILE']
+if have_protobuf
+  unit_tests_cxxflags += '-DWEBRTC_ENABLE_PROTOBUF=1'
+endif
+
 apm_unit_tests = executable('apm_unit_tests',
   unit_test_sources + common_audio_test_sources + files('test_main.cc'),
   dependencies: apm_unit_tests_deps,
   include_directories: webrtc_inc,
-  cpp_args: common_cxxflags + ['-DWEBRTC_APM_DEBUG_DUMP=0', '-DWEBRTC_AUDIOPROC_FLOAT_PROFILE'],
+  cpp_args: unit_tests_cxxflags,
 )
 
 # Register tests with Meson

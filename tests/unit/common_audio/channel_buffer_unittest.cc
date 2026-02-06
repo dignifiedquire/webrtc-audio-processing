@@ -14,7 +14,7 @@
 
 #include "webrtc/rtc_base/checks.h"
 #include <gtest/gtest.h>
-#include "test/testsupport/rtc_expect_death.h"
+#include "tests/test_utils/rtc_expect_death.h"
 
 namespace webrtc {
 

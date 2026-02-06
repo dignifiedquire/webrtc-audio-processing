@@ -25,7 +25,7 @@
 #include "modules/audio_processing/agc2/rnn_vad/common.h"
 #include "rtc_base/checks.h"
 #include "rtc_base/numerics/safe_compare.h"
-#include "test/gtest.h"
+#include <gtest/gtest.h>
 #include "test/testsupport/file_utils.h"
 
 namespace webrtc {
