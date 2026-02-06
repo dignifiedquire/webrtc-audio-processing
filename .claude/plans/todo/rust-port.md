@@ -169,132 +169,46 @@ webrtc/
 - **Resources:** WAV files, protobuf reference data
 - **Current count:** 2432 tests passing (M145)
 
-## Rust Crate Architecture
+## Rust Workspace (Implemented)
 
-```
-webrtc-audio-processing-rs/
-├── Cargo.toml                    # Workspace root
-├── crates/
-│   ├── webrtc-apm/               # Main public crate (C API)
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── ffi.rs            # C FFI exports
-│   │   │   ├── config.rs         # Configuration types
-│   │   │   └── processing.rs     # AudioProcessing wrapper
-│   │   └── Cargo.toml
-│   │
-│   ├── webrtc-apm-sys/           # C++ bindings for testing
-│   │   ├── src/lib.rs
-│   │   ├── build.rs              # Links to C++ library
-│   │   └── Cargo.toml
-│   │
-│   ├── webrtc-common-audio/      # DSP primitives
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── resampler/        # Push/sinc resamplers
-│   │   │   ├── signal_processing/# SPL functions
-│   │   │   ├── vad/              # Voice activity detection
-│   │   │   ├── fir_filter/       # FIR filter implementations
-│   │   │   ├── fft/              # FFT wrappers (pffft, ooura)
-│   │   │   └── ring_buffer.rs
-│   │   └── Cargo.toml
-│   │
-│   ├── webrtc-aec3/              # Echo Canceller 3
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── adaptive_fir_filter/
-│   │   │   ├── matched_filter/
-│   │   │   ├── echo_remover/
-│   │   │   ├── suppression/
-│   │   │   ├── delay/
-│   │   │   └── ... (organized by subsystem)
-│   │   └── Cargo.toml
-│   │
-│   ├── webrtc-aecm/              # Mobile Echo Control
-│   │   └── ...
-│   │
-│   ├── webrtc-agc/               # AGC1 + AGC2
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── agc1/
-│   │   │   ├── agc2/
-│   │   │   └── rnn_vad/
-│   │   └── Cargo.toml
-│   │
-│   ├── webrtc-ns/                # Noise Suppression
-│   │   └── ...
-│   │
-│   ├── webrtc-vad/               # Voice Activity Detection
-│   │   └── ...
-│   │
-│   ├── webrtc-simd/              # SIMD abstractions
-│   │   ├── src/
-│   │   │   ├── lib.rs
-│   │   │   ├── sse2.rs
-│   │   │   ├── avx2.rs
-│   │   │   ├── neon.rs
-│   │   │   └── fallback.rs
-│   │   └── Cargo.toml
-│   │
-│   └── webrtc-apm-proptest/      # Property-based tests
-│       ├── src/lib.rs
-│       ├── tests/
-│       │   ├── aec3_proptest.rs
-│       │   ├── agc_proptest.rs
-│       │   └── ...
-│       └── Cargo.toml
-│
-├── tests/                        # C++ tests (unchanged)
-│   └── ...
-│
-└── examples/
-    └── run-offline-rs/           # Rust example app
+```toml
+# Cargo.toml (workspace root)
+[workspace]
+resolver = "3"
+edition = "2024"
+rust-version = "1.91"
+# 10 crates in crates/ directory
 ```
 
 ### Crate Dependencies
 
 ```
-webrtc-apm (main crate)
-├── webrtc-common-audio
-├── webrtc-aec3
-│   ├── webrtc-common-audio
-│   └── webrtc-simd
-├── webrtc-aecm
-│   └── webrtc-common-audio
-├── webrtc-agc
-│   ├── webrtc-common-audio
-│   ├── webrtc-simd
-│   └── webrtc-vad
-├── webrtc-ns
-│   └── webrtc-common-audio
-└── webrtc-vad
-    └── webrtc-common-audio
+webrtc-apm (main crate, C API)
+  +-- webrtc-common-audio + tracing
+  +-- webrtc-aec3 + webrtc-simd + tracing
+  +-- webrtc-aecm + tracing
+  +-- webrtc-agc + webrtc-simd + webrtc-vad + tracing
+  +-- webrtc-ns + tracing
+  +-- webrtc-vad + tracing
+  +-- webrtc-simd
+
+Testing crates (publish = false):
+  webrtc-apm-sys      -- cxx FFI to C++ (feature: cxx-bridge)
+  webrtc-apm-proptest -- proptest + test-strategy generators
 ```
 
 ## Phased Implementation Plan
 
-### Phase 1: Foundation Infrastructure (2-3 weeks)
+### Phase 1: Foundation Infrastructure -- COMPLETE
 
-**1.1 Project Setup**
-- [ ] Create workspace structure with empty crates
-- [ ] Set up CI (build + C++ test pass requirement)
-- [ ] Configure Cargo features for SIMD (sse2, avx2, neon)
-- [ ] Set up `webrtc-apm-sys` with bindgen to existing C++ library
-
-**1.2 SIMD Abstraction Layer (`webrtc-simd`)**
-- [ ] Define portable SIMD traits for common operations
-- [ ] Implement SSE2 backend (x86/x86_64)
-- [ ] Implement AVX2 backend (x86/x86_64)
-- [ ] Implement NEON backend (ARM/ARM64)
-- [ ] Implement scalar fallback
-- [ ] Runtime CPU feature detection
-
-**1.3 Property Test Framework (`webrtc-apm-proptest`)**
-- [ ] Set up proptest/quickcheck infrastructure
-- [ ] Create audio buffer generators
-- [ ] Create config generators
-- [ ] Implement comparison utilities (tolerance-based float comparison)
-- [ ] Scaffold comparison tests calling C++ via FFI
+- [x] Workspace: 10 crates, edition 2024, resolver 3, MSRV 1.91
+- [x] Lints: unexpected_cfgs=deny, unreachable_pub, absolute_paths, mod_module_files=deny, etc.
+- [x] SIMD: `SimdBackend` enum (Scalar/SSE2/AVX2/NEON), 4 operations, 16 tests
+- [x] FFI: `webrtc-apm-sys` with cxx shim (feature-gated `cxx-bridge`)
+- [x] Testing: `proptest` + `test-strategy` derive macros, 18 tests
+- [x] Tracing: direct dependency (not feature-gated)
+- [x] Docs: `docs.rs` metadata with `--cfg docsrs` for feature-gated items
+- [x] 11 commits, 34 Rust tests passing
 
 ### Phase 2: Common Audio Primitives (3-4 weeks)
 
@@ -550,38 +464,30 @@ int wap_process_stream_f32(
 - [ ] Publish to crates.io
 - [ ] Create release binaries for major platforms
 
-## Testing Strategy
+## Testing Strategy (Implemented)
 
-### Property-Based Testing
+### Property-Based Testing with test-strategy
 
-Each Rust function will have a corresponding proptest that:
-1. Generates random but valid inputs
-2. Calls both Rust and C++ (via FFI) implementations
-3. Compares outputs with appropriate tolerance
+Uses `proptest` + `test-strategy` derive macros for clean, readable tests:
 
 ```rust
-// Example proptest structure
-#[cfg(test)]
-mod tests {
-    use proptest::prelude::*;
-    use webrtc_apm_sys as cpp;
+use webrtc_apm_proptest::generators::*;
+use test_strategy::proptest;
 
-    proptest! {
-        #[test]
-        fn fir_filter_matches_cpp(
-            coefficients in prop::collection::vec(any::<f32>(), 1..128),
-            input in prop::collection::vec(any::<f32>(), 1..1024),
-        ) {
-            let rust_output = rust_fir_filter(&coefficients, &input);
-            let cpp_output = unsafe { cpp::fir_filter(&coefficients, &input) };
-            
-            for (r, c) in rust_output.iter().zip(cpp_output.iter()) {
-                prop_assert!((r - c).abs() < 1e-6);
-            }
-        }
-    }
+#[proptest]
+fn fir_filter_preserves_length(frame: MonoFrameF32) {
+    let output = fir_filter(&coeffs, &frame.samples);
+    assert_eq!(output.len(), frame.samples.len());
 }
 ```
+
+Available `#[derive(Arbitrary)]` types: `SampleRate`, `ChannelCount`, `MonoFrameF32`, `MonoFrameI16`, `MultiChannelFrameF32`.
+
+Comparison utilities: `assert_f32_near`, `assert_f32_relative`, `assert_i16_exact`, `compare_f32` (detailed stats).
+
+### Test Runner
+
+**Always use `cargo nextest run`** (not `cargo test`). Each test runs in its own process with parallel execution.
 
 ### Bitexactness Verification
 
@@ -589,84 +495,36 @@ For algorithms requiring exact output (e.g., integer processing):
 - Compare byte-for-byte output
 - Use existing C++ test reference data
 
-### Continuous Integration
+### Verification Commands
 
-```yaml
-# CI Pipeline
-on: [push, pull_request]
-
-jobs:
-  build-cpp:
-    # Ensure C++ library still builds
-    
-  test-cpp:
-    # Run all C++ tests (must pass)
-    
-  build-rust:
-    # Build Rust crates
-    
-  test-rust-proptests:
-    # Run property tests
-    
-  test-rust-via-cpp:
-    # Run C++ tests with Rust backend (after Phase 9)
+```bash
+cargo build --workspace                    # Build
+cargo nextest run                          # Test (34 tests currently)
+cargo clippy --all-targets                 # Lint (zero warnings required)
+meson test -C builddir                     # C++ tests still pass
 ```
 
-## SIMD Implementation Strategy
+## SIMD Implementation Strategy (Implemented)
 
 ### Approach
 
-Use Rust's `std::arch` intrinsics directly (no external SIMD libraries) for maximum control and to match C++ behavior exactly.
+`SimdBackend` enum with `std::arch` intrinsics. No trait objects — the enum is `Copy + Eq` and dispatches via `match`. Backend modules export `pub(crate)` free functions.
 
 ```rust
-// webrtc-simd crate structure
-pub trait SimdOps {
-    fn sqrt_vec(x: &mut [f32]);
-    fn multiply_vec(x: &[f32], y: &[f32], z: &mut [f32]);
-    fn accumulate_vec(x: &[f32], z: &mut [f32]);
-    fn fir_filter(coeffs: &[f32], input: &[f32], output: &mut [f32]);
-    // ...
-}
-
-#[cfg(target_arch = "x86_64")]
-mod sse2 {
-    use std::arch::x86_64::*;
-    // SSE2 implementations
-}
-
-#[cfg(target_arch = "x86_64")]
-mod avx2 {
-    use std::arch::x86_64::*;
-    // AVX2 implementations (with FMA)
-}
-
-#[cfg(target_arch = "aarch64")]
-mod neon {
-    use std::arch::aarch64::*;
-    // NEON implementations
-}
-
-mod fallback {
-    // Scalar implementations
-}
-
-// Runtime dispatch
-pub fn get_simd_ops() -> &'static dyn SimdOps {
-    #[cfg(target_arch = "x86_64")]
-    {
-        if is_x86_feature_detected!("avx2") && is_x86_feature_detected!("fma") {
-            return &avx2::Avx2Ops;
-        }
-        if is_x86_feature_detected!("sse2") {
-            return &sse2::Sse2Ops;
-        }
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SimdBackend {
+    Scalar,
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    Sse2,
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    Avx2,
     #[cfg(target_arch = "aarch64")]
-    {
-        return &neon::NeonOps;
-    }
-    &fallback::ScalarOps
+    Neon,
 }
+
+// Current operations: dot_product, dual_dot_product, multiply_accumulate, sum
+// Operations added incrementally as porting phases require them
+pub fn detect_backend() -> SimdBackend { /* runtime feature detection */ }
 ```
 
 ### ARM Assembly
@@ -697,11 +555,14 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 - [ ] All SIMD paths (SSE2, AVX2, NEON) functional and verified
 - [ ] C API documented and usable from C/C++ projects
 - [ ] Published to crates.io with complete documentation
+- [ ] `cargo clippy --all-targets` zero warnings
+- [ ] `cargo nextest run` all tests green
 
 ## Reference
 
 - **C++ Source:** WebRTC M145 (branch-heads/7632)
 - **Library Version:** 3.0
-- **Test Count:** 2432 passing
-- **Build System:** Meson
+- **Test Count:** 2432 passing (C++), 34 passing (Rust, Phase 1)
+- **Build System:** Meson (C++), Cargo (Rust)
 - **C++ Standard:** C++20
+- **Rust Edition:** 2024, MSRV 1.91, resolver 3
