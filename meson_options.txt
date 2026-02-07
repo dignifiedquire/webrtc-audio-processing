@@ -10,3 +10,6 @@ option('inline-sse', type: 'boolean',
 option('tests', type: 'feature',
        value: 'auto',
        description: 'Build unit tests')
+option('rust-backend', type: 'boolean',
+       value: false,
+       description: 'Use Rust implementation of the audio processing pipeline (requires cargo)')

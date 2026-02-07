@@ -188,17 +188,26 @@ if neon_opt.allowed()
   ]
 endif
 
+if use_rust_backend
+  webrtc_audio_processing_sources += ['rust_audio_processing.cc']
+endif
+
 install_headers(webrtc_audio_processing_include_headers,
     subdir: join_paths(include_subdir, 'modules', 'audio_processing', 'include')
 )
 
+apm_deps = [
+  isac_vad_dep,
+  pffft_dep,
+  rnnoise_dep,
+] + common_deps
+if use_rust_backend
+  apm_deps += [rust_apm_dep]
+endif
+
 libwebrtc_audio_processing = library(apm_project_name,
     webrtc_audio_processing_sources,
-    dependencies: [
-      isac_vad_dep,
-      pffft_dep,
-      rnnoise_dep,
-    ] + common_deps,
+    dependencies: apm_deps,
     link_whole: [libbase, libapi, libsystem_wrappers, libcommon_audio] + extra_libs,
     include_directories: webrtc_inc,
     c_args: common_cflags + apm_flags,

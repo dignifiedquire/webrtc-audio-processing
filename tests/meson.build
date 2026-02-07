@@ -284,6 +284,9 @@ endif
 if absl_flags_parse_dep.found()
   apm_unit_tests_deps += absl_flags_parse_dep
 endif
+if use_rust_backend
+  apm_unit_tests_deps += rust_apm_dep
+endif
 
 unit_tests_cxxflags = common_cxxflags + ['-DWEBRTC_APM_DEBUG_DUMP=0', '-DWEBRTC_AUDIOPROC_FLOAT_PROFILE']
 if have_protobuf

@@ -198,6 +198,39 @@ else
   avx_flags = ['-mavx2', '-mfma']
 endif
 
+# Rust backend support
+use_rust_backend = get_option('rust-backend')
+if use_rust_backend
+  cargo = find_program('cargo', required: true)
+  rust_target_dir = meson.project_source_root() / 'target' / 'release'
+  rust_lib_path = rust_target_dir / 'libwebrtc_apm.a'
+
+  # Build the Rust library. Uses a custom target with a stamp file since
+  # cargo manages the actual output location (target/release/).
+  rust_lib = custom_target('webrtc-apm-rust',
+    output: 'webrtc_apm_rust.stamp',
+    command: [
+      'sh', '-c',
+      '"$1" build --release -p webrtc-apm && touch "$2"',
+      '--',  # separator
+      cargo, '@OUTPUT@',
+    ],
+    env: {'CARGO_TARGET_DIR': meson.project_source_root() / 'target'},
+    console: true,
+    build_always_stale: true,
+  )
+
+  rust_apm_inc = include_directories('crates/webrtc-apm/include')
+  rust_apm_dep = declare_dependency(
+    sources: rust_lib,
+    link_args: [rust_lib_path],
+    include_directories: rust_apm_inc,
+  )
+
+  common_cflags += ['-DWEBRTC_USE_RUST_APM']
+  common_cxxflags = common_cflags
+endif
+
 subdir('webrtc')
 
 pkgconfig = import('pkgconfig')

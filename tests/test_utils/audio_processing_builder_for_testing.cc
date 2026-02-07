@@ -18,12 +18,19 @@
 #include "api/make_ref_counted.h"
 #include "webrtc/modules/audio_processing/audio_processing_impl.h"
 
+#ifdef WEBRTC_USE_RUST_APM
+#include "webrtc/modules/audio_processing/rust_audio_processing.h"
+#endif
+
 namespace webrtc {
 
 AudioProcessingBuilderForTesting::AudioProcessingBuilderForTesting() = default;
 AudioProcessingBuilderForTesting::~AudioProcessingBuilderForTesting() = default;
 
 scoped_refptr<AudioProcessing> AudioProcessingBuilderForTesting::Create() {
+#ifdef WEBRTC_USE_RUST_APM
+  return make_ref_counted<RustAudioProcessing>(config_);
+#else
   BuiltinAudioProcessingBuilder builder(config_);
   builder.SetCapturePostProcessing(std::move(capture_post_processing_));
   builder.SetRenderPreProcessing(std::move(render_pre_processing_));
@@ -31,6 +38,7 @@ scoped_refptr<AudioProcessing> AudioProcessingBuilderForTesting::Create() {
   builder.SetEchoDetector(std::move(echo_detector_));
   builder.SetCaptureAnalyzer(std::move(capture_analyzer_));
   return builder.Build(CreateEnvironment());
+#endif
 }
 
 }  // namespace webrtc

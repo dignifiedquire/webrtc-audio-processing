@@ -5,8 +5,7 @@
 #ifndef WEBRTC_MODULES_AUDIO_PROCESSING_RUST_AUDIO_PROCESSING_H_
 #define WEBRTC_MODULES_AUDIO_PROCESSING_RUST_AUDIO_PROCESSING_H_
 
-#include "webrtc/api/audio/audio_processing.h"
-#include "webrtc/api/ref_counted_base.h"
+#include "api/audio/audio_processing.h"
 
 // Forward declaration of the opaque Rust handle.
 struct WapAudioProcessing;
@@ -18,18 +17,14 @@ namespace webrtc {
 // Implements the AudioProcessing abstract interface by delegating all calls
 // to the Rust C API. Unsupported features (AGC1, AECM, AecDump) return
 // kUnsupportedFunctionError or no-op.
-class RustAudioProcessing : public AudioProcessing,
-                            public RefCountedBase {
+//
+// Note: AddRef/Release are left unimplemented (abstract). Callers must use
+// make_ref_counted<RustAudioProcessing>() which wraps in RefCountedObject.
+class RustAudioProcessing : public AudioProcessing {
  public:
   RustAudioProcessing();
   explicit RustAudioProcessing(const AudioProcessing::Config& config);
   ~RustAudioProcessing() override;
-
-  // RefCountInterface (via RefCountedBase).
-  void AddRef() const override { RefCountedBase::AddRef(); }
-  RefCountReleaseStatus Release() const override {
-    return RefCountedBase::Release();
-  }
 
   // --- Initialization ---
   int Initialize() override;

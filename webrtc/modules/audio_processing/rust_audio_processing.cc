@@ -1,6 +1,6 @@
 // C++ wrapper implementation delegating to the Rust C API (wap_* functions).
 
-#include "webrtc/modules/audio_processing/rust_audio_processing.h"
+#include "modules/audio_processing/rust_audio_processing.h"
 
 #include <cstring>
 
