@@ -8,9 +8,6 @@
 build/
 depcomp
 install/
+INSTALL/
 subprojects/*/
 .cache
-
-# Rust
-target/
-Cargo.lock

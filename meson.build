@@ -198,33 +198,49 @@ else
   avx_flags = ['-mavx2', '-mfma']
 endif
 
-# Rust backend support
+# Rust backend support (uses the sonora crate)
 use_rust_backend = get_option('rust-backend')
 if use_rust_backend
-  cargo = find_program('cargo', required: true)
-  rust_target_dir = meson.project_source_root() / 'target' / 'release'
-  rust_lib_path = rust_target_dir / 'libwebrtc_apm.a'
+  sonora_root_opt = get_option('sonora-root')
+  if sonora_root_opt == ''
+    sonora_root = meson.project_source_root() / '..'
+  else
+    sonora_root = sonora_root_opt
+  endif
 
-  # Build the Rust library. Uses a custom target with a stamp file since
-  # cargo manages the actual output location (target/release/).
-  rust_lib = custom_target('webrtc-apm-rust',
-    output: 'webrtc_apm_rust.stamp',
+  cargo = find_program('cargo', required: true)
+
+  # Build the sonora crate. The actual library location is determined by
+  # cargo (respects CARGO_TARGET_DIR, .cargo/config.toml, etc.), so we
+  # query it via `cargo metadata`.
+  rust_lib = custom_target('sonora-rust',
+    output: 'sonora_rust.stamp',
     command: [
       'sh', '-c',
-      '"$1" build --release -p webrtc-apm && touch "$2"',
+      'cd "$1" && "$2" build --release -p sonora && touch "$3"',
       '--',  # separator
-      cargo, '@OUTPUT@',
+      sonora_root, cargo, '@OUTPUT@',
     ],
-    env: {'CARGO_TARGET_DIR': meson.project_source_root() / 'target'},
     console: true,
     build_always_stale: true,
   )
 
-  rust_apm_inc = include_directories('crates/webrtc-apm/include')
+  # Discover the target directory from cargo metadata.
+  rust_target_dir = run_command(
+    'sh', '-c',
+    '"$1" metadata --format-version 1 --no-deps --manifest-path "$2" | python3 -c "import sys,json; print(json.load(sys.stdin)[\'target_directory\'])"',
+    '--',
+    cargo, sonora_root / 'Cargo.toml',
+    check: true,
+  ).stdout().strip()
+
+  rust_lib_path = rust_target_dir / 'release' / 'libsonora.a'
+  sonora_include = sonora_root / 'crates' / 'sonora' / 'include'
+
   rust_apm_dep = declare_dependency(
     sources: rust_lib,
     link_args: [rust_lib_path],
-    include_directories: rust_apm_inc,
+    compile_args: ['-I' + sonora_include],
   )
 
   common_cflags += ['-DWEBRTC_USE_RUST_APM']

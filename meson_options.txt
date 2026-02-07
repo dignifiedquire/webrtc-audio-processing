@@ -13,3 +13,6 @@ option('tests', type: 'feature',
 option('rust-backend', type: 'boolean',
        value: false,
        description: 'Use Rust implementation of the audio processing pipeline (requires cargo)')
+option('sonora-root', type: 'string',
+       value: '',
+       description: 'Path to the sonora workspace root (default: parent of this source tree)')

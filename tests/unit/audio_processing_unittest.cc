@@ -753,6 +753,8 @@ void ApmTest::StreamParametersTest(Format format) {
   EXPECT_EQ(AudioProcessing::kNoError, ProcessStreamChooser(format));
 }
 
+// These tests require AGC1 which is not implemented in the Rust backend.
+#ifndef WEBRTC_USE_RUST_APM
 TEST_F(ApmTest, StreamParametersInt) {
   StreamParametersTest(kIntFormat);
 }
@@ -760,6 +762,7 @@ TEST_F(ApmTest, StreamParametersInt) {
 TEST_F(ApmTest, StreamParametersFloat) {
   StreamParametersTest(kFloatFormat);
 }
+#endif
 
 void ApmTest::TestChangingChannelsInt16Interface(
     size_t num_channels,
@@ -1179,12 +1182,15 @@ void ApmTest::RunQuantizedVolumeDoesNotGetStuckTest(int sample_rate) {
 
 // Verifies that despite volume slider quantization, the AGC can continue to
 // increase its volume.
+// Requires AGC1 which is not implemented in the Rust backend.
+#ifndef WEBRTC_USE_RUST_APM
 TEST_F(ApmTest, QuantizedVolumeDoesNotGetStuck) {
   for (size_t sample_rate_hz : kProcessSampleRates) {
     SCOPED_TRACE(::testing::Message() << "sample_rate_hz=" << sample_rate_hz);
     RunQuantizedVolumeDoesNotGetStuckTest(sample_rate_hz);
   }
 }
+#endif
 
 void ApmTest::RunManualVolumeChangeIsPossibleTest(int sample_rate) {
   Init(sample_rate, sample_rate, sample_rate, 2, 2, 2, false);
