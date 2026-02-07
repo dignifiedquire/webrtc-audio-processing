@@ -64,9 +64,18 @@ int RustAudioProcessing::Initialize() {
 }
 
 int RustAudioProcessing::Initialize(
-    const ProcessingConfig& /*processing_config*/) {
-  // Rust auto-reinitializes on format changes.
-  return kNoError;
+    const ProcessingConfig& processing_config) {
+  WapStreamConfig input = ToWapStreamConfig(
+      processing_config.input_stream());
+  WapStreamConfig output = ToWapStreamConfig(
+      processing_config.output_stream());
+  WapStreamConfig reverse_input = ToWapStreamConfig(
+      processing_config.reverse_input_stream());
+  WapStreamConfig reverse_output = ToWapStreamConfig(
+      processing_config.reverse_output_stream());
+  WapError err = wap_initialize(handle_, input, output,
+                                reverse_input, reverse_output);
+  return WapErrorToInt(err);
 }
 
 void RustAudioProcessing::ApplyConfig(const Config& config) {
@@ -234,9 +243,14 @@ int RustAudioProcessing::AnalyzeReverseStream(
     const float* const* data,
     const StreamConfig& reverse_config) {
   // Analyze is equivalent to ProcessReverseStream with the same output config
-  // and a throwaway output buffer.
+  // and a throwaway output buffer. Use safe dimensions for the throwaway buffer
+  // to avoid allocating huge memory for invalid configs (e.g. negative rates).
+  // The Rust side will validate the config and return the appropriate error.
   size_t num_channels = reverse_config.num_channels();
-  size_t num_frames = reverse_config.num_frames();
+  int rate = reverse_config.sample_rate_hz();
+  size_t num_frames = (rate > 0 && rate <= 384000)
+                          ? static_cast<size_t>(rate / 100)
+                          : 0;
   std::vector<std::vector<float>> dest_bufs(num_channels,
                                             std::vector<float>(num_frames));
   std::vector<float*> dest_ptrs(num_channels);
