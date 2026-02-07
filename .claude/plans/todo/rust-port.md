@@ -500,7 +500,7 @@ Recommended: Port to NEON intrinsics where possible, keep assembly for ARMv7-spe
 
 - **C++ Source:** WebRTC M145 (branch-heads/7632)
 - **Library Version:** 3.0
-- **Test Count:** 2432 passing (C++), 544 passing (Rust, Phases 1-2, 4-6)
+- **Test Count:** 2432 passing (C++), 756 passing (Rust, Phases 1-2, 4-7 + SIMD)
 - **Build System:** Meson (C++), Cargo (Rust)
 - **C++ Standard:** C++20
 - **Rust Edition:** 2024, MSRV 1.91, resolver 3

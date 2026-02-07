@@ -15,7 +15,7 @@ Create the C-compatible API that allows existing C/C++ consumers (PulseAudio, Pi
 
 ## Tasks
 
-### 9.1 C API Design
+### 8.1 C API Design
 
 Design a C API that mirrors the essential functionality of the C++ `AudioProcessing` class.
 
@@ -32,14 +32,15 @@ webrtc-apm/src/
 #[repr(C)]
 pub struct WapConfig {
     pub echo_cancellation_enabled: bool,
-    pub echo_cancellation_mobile_mode: bool,
     pub noise_suppression_enabled: bool,
     pub noise_suppression_level: WapNsLevel,
-    pub gain_controller1_enabled: bool,
-    pub gain_controller1_mode: WapAgc1Mode,
     pub gain_controller2_enabled: bool,
     pub gain_controller2_fixed_gain_db: f32,
+    pub gain_controller2_adaptive_digital_enabled: bool,
     pub high_pass_filter_enabled: bool,
+    pub capture_level_adjustment_enabled: bool,
+    pub capture_level_adjustment_pre_gain_factor: f32,
+    pub capture_level_adjustment_post_gain_factor: f32,
     // ... other fields matching AudioProcessing::Config
 }
 
@@ -49,13 +50,6 @@ pub enum WapNsLevel {
     Moderate = 1,
     High = 2,
     VeryHigh = 3,
-}
-
-#[repr(C)]
-pub enum WapAgc1Mode {
-    AdaptiveAnalog = 0,
-    AdaptiveDigital = 1,
-    FixedDigital = 2,
 }
 
 #[repr(C)]
@@ -217,7 +211,7 @@ pub extern "C" fn wap_get_config(
 
 ---
 
-### 9.2 C Header Generation
+### 8.2 C Header Generation
 
 Use cbindgen to auto-generate the C header.
 
@@ -262,7 +256,7 @@ fn main() {
 
 ---
 
-### 9.3 Shared Library Build
+### 8.3 Shared Library Build
 
 Configure the crate to produce a C-compatible shared library.
 
@@ -297,7 +291,7 @@ Generate `wap-audio-processing.pc` for downstream projects.
 
 ---
 
-### 9.4 C++ Test Suite Validation
+### 8.4 C++ Test Suite Validation
 
 The ultimate validation: run the existing C++ test suite against the Rust implementation.
 
@@ -363,7 +357,7 @@ meson test -C builddir-rust -v
 
 ---
 
-### 9.5 Performance Benchmarking
+### 8.5 Performance Benchmarking
 
 Compare Rust and C++ performance.
 

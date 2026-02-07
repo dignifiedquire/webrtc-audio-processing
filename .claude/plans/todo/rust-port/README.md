@@ -17,8 +17,8 @@
 | 5 | [Noise Suppression](phase-05-noise-suppression.md) | 2-3 weeks | 7 | Phase 2 | **Complete** |
 | 6 | [Echo Cancellation (AEC3)](phase-06-echo-cancellation.md) | 6-8 weeks | 21 | Phase 2 | **Complete** (SIMD pending) |
 | 7 | [Audio Processing Integration](phase-07-integration.md) | 3-4 weeks | 5 | Phases 2,4-6 | **Complete** |
-| SIMD | [SIMD Optimization](phase-simd-optimization.md) | 3-4 weeks | 8 | Phases 1-7 | **Next** |
-| 8 | [C API & Final Integration](phase-08-c-api.md) | 2-3 weeks | 7 | Phase 7 | Not Started |
+| SIMD | [SIMD Optimization](phase-simd-optimization.md) | 3-4 weeks | 8 | Phases 1-7 | **Complete** |
+| 8 | [C API & Final Integration](phase-08-c-api.md) | 2-3 weeks | 7 | Phase 7 | **Next** |
 | 9 | [Documentation & Release](phase-09-docs-release.md) | 1-2 weeks | 6 | Phase 8 | Not Started |
 | **Total** | | **~22-32 weeks** | **~90** | | |
 
@@ -43,10 +43,10 @@ Phase 2 (Common Audio) -- COMPLETE
 Phase 7 (Integration) --- COMPLETE
   |
   v
-SIMD Optimization ------- NEXT
+SIMD Optimization ------- COMPLETE
   |
   v
-Phase 8 (C API)
+Phase 8 (C API) --------- NEXT
   |
   v
 Phase 9 (Docs & Release)
