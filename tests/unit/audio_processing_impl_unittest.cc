@@ -681,6 +681,8 @@ TEST(AudioProcessingImplTest,
   }
 }
 
+// These tests require AGC1 which is not implemented in the Rust backend.
+#ifndef WEBRTC_USE_RUST_APM
 class ApmInputVolumeControllerParametrizedTest
     : public ::testing::TestWithParam<
           std::tuple<int, int, AudioProcessing::Config>> {
@@ -808,6 +810,7 @@ INSTANTIATE_TEST_SUITE_P(
                                           .enable_digital_adaptive = false}},
                 .gain_controller2 = {.enabled = true,
                                      .adaptive_digital = {.enabled = true}}})));
+#endif  // !WEBRTC_USE_RUST_APM
 
 // When the input volume is not emulated and no input volume controller is
 // active, the recommended volume must always be the applied volume.

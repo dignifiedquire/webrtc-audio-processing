@@ -1241,12 +1241,15 @@ void ApmTest::RunManualVolumeChangeIsPossibleTest(int sample_rate) {
   EXPECT_GT(out_analog_level, 100);
 }
 
+// Requires AGC1 which is not implemented in the Rust backend.
+#ifndef WEBRTC_USE_RUST_APM
 TEST_F(ApmTest, ManualVolumeChangeIsPossible) {
   for (size_t sample_rate_hz : kProcessSampleRates) {
     SCOPED_TRACE(::testing::Message() << "sample_rate_hz=" << sample_rate_hz);
     RunManualVolumeChangeIsPossibleTest(sample_rate_hz);
   }
 }
+#endif
 
 TEST_F(ApmTest, HighPassFilter) {
   // Turn HP filter on/off
