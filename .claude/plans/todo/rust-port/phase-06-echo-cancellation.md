@@ -1,6 +1,6 @@
 # Phase 6: Echo Cancellation (AEC3)
 
-**Status:** Not Started
+**Status:** Complete (172 tests, 65 files, ~15,800 lines; SIMD for MatchedFilter/AdaptiveFirFilter deferred to SIMD phase)
 **Estimated Duration:** 6-8 weeks
 **Dependencies:** Phase 2 (Common Audio - FFT, FIR filter, SIMD)
 **Outcome:** The `webrtc-aec3` crate contains a complete Rust implementation of the Echo Canceller 3 that produces identical echo-cancelled output to the C++ reference. All SIMD optimizations (SSE2, AVX2, NEON) are ported.

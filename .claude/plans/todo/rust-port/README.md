@@ -15,11 +15,12 @@
 | 2 | [Common Audio Primitives](phase-02-common-audio.md) | ~3 weeks | 10 | Phase 1 | **Complete** (SIMD pending) |
 | 4 | [Automatic Gain Control (AGC2)](phase-04-agc.md) | 3-4 weeks | 14 | Phase 2 | **Complete** |
 | 5 | [Noise Suppression](phase-05-noise-suppression.md) | 2-3 weeks | 7 | Phase 2 | **Complete** |
-| 6 | [Echo Cancellation (AEC3)](phase-06-echo-cancellation.md) | 6-8 weeks | 20 | Phase 2 | **Next** |
-| 7 | [Audio Processing Integration](phase-07-integration.md) | 3-4 weeks | 11 | Phases 2,4-6 | Not Started |
+| 6 | [Echo Cancellation (AEC3)](phase-06-echo-cancellation.md) | 6-8 weeks | 21 | Phase 2 | **Complete** (SIMD pending) |
+| 7 | [Audio Processing Integration](phase-07-integration.md) | 3-4 weeks | 5 | Phases 2,4-6 | **Complete** |
+| SIMD | [SIMD Optimization](phase-simd-optimization.md) | 3-4 weeks | 8 | Phases 1-7 | **Next** |
 | 8 | [C API & Final Integration](phase-08-c-api.md) | 2-3 weeks | 7 | Phase 7 | Not Started |
 | 9 | [Documentation & Release](phase-09-docs-release.md) | 1-2 weeks | 6 | Phase 8 | Not Started |
-| **Total** | | **~20-29 weeks** | **~86** | | |
+| **Total** | | **~22-32 weeks** | **~90** | | |
 
 **Excluded (not ported):** AECM (removed upstream M146), AGC1 (deprecated), SPL library (legacy fixed-point), Core VAD (SPL-dependent, modern pipeline uses AGC2's RNN VAD).
 See [master plan](../rust-port.md) for rationale.
@@ -36,10 +37,13 @@ Phase 2 (Common Audio) -- COMPLETE
   |
   +---> Phase 5 (NS) ---- COMPLETE
   |
-  +---> Phase 6 (AEC3) -- NEXT
+  +---> Phase 6 (AEC3) -- COMPLETE
   |
   v
-Phase 7 (Integration) <--- Phases 2,4-6
+Phase 7 (Integration) --- COMPLETE
+  |
+  v
+SIMD Optimization ------- NEXT
   |
   v
 Phase 8 (C API)
