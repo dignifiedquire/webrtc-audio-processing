@@ -255,12 +255,17 @@ TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
 
 // Verifies that the optimized methods for filter adaptation are bitexact to
 // their reference counterparts.
-// NOTE: Disabled because the scalar C code may be compiled with FMA
-// instructions (-march=native) while the AVX2 intrinsics use explicit
+// NOTE: Disabled for Rust backend because the scalar C code may be compiled
+// with FMA instructions (-march=native) while the AVX2 intrinsics use explicit
 // multiply+add. Over 500 iterations the rounding differences accumulate
 // beyond EXPECT_FLOAT_EQ tolerance. This is not a correctness issue.
+#if defined(WEBRTC_USE_RUST_APM)
 TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
        DISABLED_FilterAdaptationAvx2Optimizations) {
+#else
+TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
+       FilterAdaptationAvx2Optimizations) {
+#endif
   const size_t num_render_channels = GetParam();
   constexpr int kSampleRateHz = 48000;
   constexpr size_t kNumBands = NumBandsForRate(kSampleRateHz);
