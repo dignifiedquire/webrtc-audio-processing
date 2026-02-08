@@ -57,7 +57,10 @@ TEST_F(VadTest, set_mode_core) {
 }
 
 // TODO(bugs.webrtc.org/345674542): Fix/enable.
-#if defined(__has_feature) && __has_feature(undefined_behavior_sanitizer)
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if __has_feature(undefined_behavior_sanitizer)
 TEST_F(VadTest, DISABLED_CalcVad) {
 #else
 TEST_F(VadTest, CalcVad) {

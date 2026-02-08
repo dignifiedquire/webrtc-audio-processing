@@ -21,7 +21,10 @@ namespace webrtc {
 namespace test {
 
 // TODO(bugs.webrtc.org/345674543): Fix/enable.
-#if defined(__has_feature) && __has_feature(undefined_behavior_sanitizer)
+#ifndef __has_feature
+#define __has_feature(x) 0
+#endif
+#if __has_feature(undefined_behavior_sanitizer)
 TEST_F(VadTest, DISABLED_vad_gmm) {
 #else
 TEST_F(VadTest, vad_gmm) {
