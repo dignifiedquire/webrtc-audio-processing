@@ -208,7 +208,7 @@ endif
 libwebrtc_audio_processing = library(apm_project_name,
     webrtc_audio_processing_sources,
     dependencies: apm_deps,
-    link_whole: [libbase, libapi, libsystem_wrappers, libcommon_audio] + extra_libs,
+    link_whole: [libbase, libapi, libsystem_wrappers, libcommon_audio] + arch_libs + extra_libs,
     include_directories: webrtc_inc,
     c_args: common_cflags + apm_flags,
     cpp_args: common_cxxflags + apm_flags,
