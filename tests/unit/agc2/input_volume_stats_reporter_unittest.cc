@@ -33,7 +33,7 @@ class InputVolumeStatsReporterTest
   InputVolumeStatsReporterTest() { metrics::Reset(); }
 
  protected:
-  InputVolumeType InputVolumeType() const { return GetParam(); }
+  InputVolumeStatsReporter::InputVolumeType GetInputVolumeType() const { return GetParam(); }
   std::string VolumeLabel() const {
     return (StringBuilder(kLabelPrefix) << VolumeTypeLabel() << "OnChange")
         .str();
@@ -67,7 +67,7 @@ class InputVolumeStatsReporterTest
 
  private:
   absl::string_view VolumeTypeLabel() const {
-    switch (InputVolumeType()) {
+    switch (GetInputVolumeType()) {
       case InputVolumeType::kApplied:
         return "AppliedInputVolume.";
       case InputVolumeType::kRecommended:
@@ -77,13 +77,13 @@ class InputVolumeStatsReporterTest
 };
 
 TEST_P(InputVolumeStatsReporterTest, CheckVolumeOnChangeIsEmpty) {
-  InputVolumeStatsReporter stats_reporter(InputVolumeType());
+  InputVolumeStatsReporter stats_reporter(GetInputVolumeType());
   stats_reporter.UpdateStatistics(10);
   EXPECT_METRIC_THAT(metrics::Samples(VolumeLabel()), ::testing::ElementsAre());
 }
 
 TEST_P(InputVolumeStatsReporterTest, CheckRateAverageStatsEmpty) {
-  InputVolumeStatsReporter stats_reporter(InputVolumeType());
+  InputVolumeStatsReporter stats_reporter(GetInputVolumeType());
   constexpr int kInputVolume = 10;
   stats_reporter.UpdateStatistics(kInputVolume);
   // Update almost until the periodic logging and reset.
@@ -106,7 +106,7 @@ TEST_P(InputVolumeStatsReporterTest, CheckRateAverageStatsEmpty) {
 }
 
 TEST_P(InputVolumeStatsReporterTest, CheckSamples) {
-  InputVolumeStatsReporter stats_reporter(InputVolumeType());
+  InputVolumeStatsReporter stats_reporter(GetInputVolumeType());
 
   constexpr int kInputVolume1 = 10;
   stats_reporter.UpdateStatistics(kInputVolume1);
@@ -158,7 +158,7 @@ TEST_P(InputVolumeStatsReporterTest, CheckSamples) {
 }  // namespace
 
 TEST_P(InputVolumeStatsReporterTest, CheckVolumeUpdateStatsForEmptyStats) {
-  InputVolumeStatsReporter stats_reporter(InputVolumeType());
+  InputVolumeStatsReporter stats_reporter(GetInputVolumeType());
   const auto& update_stats = stats_reporter.volume_update_stats();
   EXPECT_EQ(update_stats.num_decreases, 0);
   EXPECT_EQ(update_stats.sum_decreases, 0);
@@ -169,7 +169,7 @@ TEST_P(InputVolumeStatsReporterTest, CheckVolumeUpdateStatsForEmptyStats) {
 TEST_P(InputVolumeStatsReporterTest,
        CheckVolumeUpdateStatsAfterNoVolumeChange) {
   constexpr int kInputVolume = 10;
-  InputVolumeStatsReporter stats_reporter(InputVolumeType());
+  InputVolumeStatsReporter stats_reporter(GetInputVolumeType());
   stats_reporter.UpdateStatistics(kInputVolume);
   stats_reporter.UpdateStatistics(kInputVolume);
   stats_reporter.UpdateStatistics(kInputVolume);
@@ -183,7 +183,7 @@ TEST_P(InputVolumeStatsReporterTest,
 TEST_P(InputVolumeStatsReporterTest,
        CheckVolumeUpdateStatsAfterVolumeIncrease) {
   constexpr int kInputVolume = 10;
-  InputVolumeStatsReporter stats_reporter(InputVolumeType());
+  InputVolumeStatsReporter stats_reporter(GetInputVolumeType());
   stats_reporter.UpdateStatistics(kInputVolume);
   stats_reporter.UpdateStatistics(kInputVolume + 4);
   stats_reporter.UpdateStatistics(kInputVolume + 5);
@@ -197,7 +197,7 @@ TEST_P(InputVolumeStatsReporterTest,
 TEST_P(InputVolumeStatsReporterTest,
        CheckVolumeUpdateStatsAfterVolumeDecrease) {
   constexpr int kInputVolume = 10;
-  InputVolumeStatsReporter stats_reporter(InputVolumeType());
+  InputVolumeStatsReporter stats_reporter(GetInputVolumeType());
   stats_reporter.UpdateStatistics(kInputVolume);
   stats_reporter.UpdateStatistics(kInputVolume - 4);
   stats_reporter.UpdateStatistics(kInputVolume - 5);
@@ -209,7 +209,7 @@ TEST_P(InputVolumeStatsReporterTest,
 }
 
 TEST_P(InputVolumeStatsReporterTest, CheckVolumeUpdateStatsAfterReset) {
-  InputVolumeStatsReporter stats_reporter(InputVolumeType());
+  InputVolumeStatsReporter stats_reporter(GetInputVolumeType());
   constexpr int kInputVolume = 10;
   stats_reporter.UpdateStatistics(kInputVolume);
   // Update until the periodic reset.
