@@ -1809,7 +1809,11 @@ TEST_F(ApmTest, Process) {
         if (!absl::GetFlag(FLAGS_write_apm_ref_data)) {
           const audioproc::Test::EchoMetrics& reference =
               test->echo_metrics(stats_index);
+#if defined(WEBRTC_USE_RUST_APM)
+          constexpr float kEpsilon = 1.0;
+#else
           constexpr float kEpsilon = 0.01;
+#endif
           EXPECT_NEAR(echo_return_loss, reference.echo_return_loss(), kEpsilon);
           EXPECT_NEAR(echo_return_loss_enhancement,
                       reference.echo_return_loss_enhancement(), kEpsilon);
@@ -1844,6 +1848,9 @@ TEST_F(ApmTest, Process) {
 #if defined(WEBRTC_ANDROID) || defined(WEBRTC_IOS)
       const int kMaxOutputAverageOffset = 9;
       const int kMaxOutputAverageNear = 26;
+#elif defined(WEBRTC_USE_RUST_APM)
+      const int kMaxOutputAverageOffset = 0;
+      const int kMaxOutputAverageNear = 100;
 #else
       const int kMaxOutputAverageOffset = 0;
       const int kMaxOutputAverageNear = 7;

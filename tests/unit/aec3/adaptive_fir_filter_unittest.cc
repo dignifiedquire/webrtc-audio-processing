@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <memory>
 #include <numeric>
@@ -315,8 +316,12 @@ TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
         for (size_t p = 0; p < num_partitions; ++p) {
           for (size_t ch = 0; ch < num_render_channels; ++ch) {
             for (size_t j = 0; j < H_C[p][ch].re.size(); ++j) {
-              EXPECT_FLOAT_EQ(H_C[p][ch].re[j], H_Avx2[p][ch].re[j]);
-              EXPECT_FLOAT_EQ(H_C[p][ch].im[j], H_Avx2[p][ch].im[j]);
+              // AVX2 uses FMA instructions which produce different rounding
+              // than separate multiply+add in the C reference implementation.
+              EXPECT_NEAR(H_C[p][ch].re[j], H_Avx2[p][ch].re[j],
+                          std::abs(H_C[p][ch].re[j]) * 1e-5f + 1e-6f);
+              EXPECT_NEAR(H_C[p][ch].im[j], H_Avx2[p][ch].im[j],
+                          std::abs(H_C[p][ch].im[j]) * 1e-5f + 1e-6f);
             }
           }
         }
