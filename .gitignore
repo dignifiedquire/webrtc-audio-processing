@@ -8,6 +8,7 @@
 build/
 depcomp
 install/
+install_nofma/
 INSTALL/
 subprojects/*/
 .cache
