@@ -1,6 +1,7 @@
 base_sources = [
   'checks.cc',
   'containers/flat_tree.cc',
+  'cpu_info.cc',
   'event.cc',
   'event_tracer.cc',
   'experiments/field_trial_parser.cc',
