@@ -185,7 +185,8 @@ int AudioFormatValidityToErrorCode(AudioFormatValidity validity) {
     case AudioFormatValidity::kInvalidChannelCount:
       return AudioProcessing::kBadNumberChannelsError;
   }
-  RTC_DCHECK(false);
+  RTC_DCHECK_NOTREACHED();
+  return AudioProcessing::kBadNumberChannelsError;
 }
 
 // Returns an AudioProcessing::Error together with the best possible option for
