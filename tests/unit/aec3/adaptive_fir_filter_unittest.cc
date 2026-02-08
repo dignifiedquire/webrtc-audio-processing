@@ -318,10 +318,12 @@ TEST_P(AdaptiveFirFilterOneTwoFourEightRenderChannels,
             for (size_t j = 0; j < H_C[p][ch].re.size(); ++j) {
               // AVX2 uses FMA instructions which produce different rounding
               // than separate multiply+add in the C reference implementation.
+              // Errors accumulate across adaptation iterations, reaching ~4e-5
+              // relative error; use 1e-4 for margin.
               EXPECT_NEAR(H_C[p][ch].re[j], H_Avx2[p][ch].re[j],
-                          std::abs(H_C[p][ch].re[j]) * 1e-5f + 1e-6f);
+                          std::abs(H_C[p][ch].re[j]) * 1e-4f + 1e-6f);
               EXPECT_NEAR(H_C[p][ch].im[j], H_Avx2[p][ch].im[j],
-                          std::abs(H_C[p][ch].im[j]) * 1e-5f + 1e-6f);
+                          std::abs(H_C[p][ch].im[j]) * 1e-4f + 1e-6f);
             }
           }
         }
