@@ -198,7 +198,7 @@ else
   avx_flags = ['-mavx2', '-mfma']
 endif
 
-# Rust backend support (uses the sonora crate)
+# Rust backend support (uses the sonora-ffi crate)
 use_rust_backend = get_option('rust-backend')
 if use_rust_backend
   sonora_root_opt = get_option('sonora-root')
@@ -210,14 +210,14 @@ if use_rust_backend
 
   cargo = find_program('cargo', required: true)
 
-  # Build the sonora crate. The actual library location is determined by
+  # Build the sonora-ffi crate. The actual library location is determined by
   # cargo (respects CARGO_TARGET_DIR, .cargo/config.toml, etc.), so we
   # query it via `cargo metadata`.
   rust_lib = custom_target('sonora-rust',
     output: 'sonora_rust.stamp',
     command: [
       'sh', '-c',
-      'cd "$1" && "$2" build --release -p sonora && touch "$3"',
+      'cd "$1" && "$2" build --release -p sonora-ffi && touch "$3"',
       '--',  # separator
       sonora_root, cargo, '@OUTPUT@',
     ],
@@ -234,8 +234,8 @@ if use_rust_backend
     check: true,
   ).stdout().strip()
 
-  rust_lib_path = rust_target_dir / 'release' / 'libsonora.a'
-  sonora_include = sonora_root / 'crates' / 'sonora' / 'include'
+  rust_lib_path = rust_target_dir / 'release' / 'libsonora_ffi.a'
+  sonora_include = sonora_root / 'crates' / 'sonora-ffi' / 'include'
 
   rust_apm_dep = declare_dependency(
     sources: rust_lib,
