@@ -36,7 +36,12 @@ FIRFilter* CreateFirFilter(const float* coefficients,
 
   FIRFilter* filter = nullptr;
 // If we know the minimum architecture at compile time, avoid CPU detection.
-#if defined(WEBRTC_ARCH_X86_FAMILY)
+// Check NEON first to match the include guards above and to ensure ARM
+// builds are never affected by x86 detection (defense-in-depth).
+#if defined(WEBRTC_HAS_NEON)
+  filter =
+      new FIRFilterNEON(coefficients, coefficients_length, max_input_length);
+#elif defined(WEBRTC_ARCH_X86_FAMILY)
   // x86 CPU detection required.
   if (cpu_info::Supports(cpu_info::ISA::kAVX2)) {
     filter =
@@ -47,9 +52,6 @@ FIRFilter* CreateFirFilter(const float* coefficients,
   } else {
     filter = new FIRFilterC(coefficients, coefficients_length);
   }
-#elif defined(WEBRTC_HAS_NEON)
-  filter =
-      new FIRFilterNEON(coefficients, coefficients_length, max_input_length);
 #else
   filter = new FIRFilterC(coefficients, coefficients_length);
 #endif
