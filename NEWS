@@ -1,3 +1,50 @@
+Unreleased
+----------
+
+Cherry-picks from upstream WebRTC main on top of M145 (branch-heads/7632).
+
+Breaking changes:
+
+  * AudioProcessing::Config::EchoCanceller::mobile_mode is removed, and AECm
+    can no longer be enabled (the AECm sources remain, unused)
+  * The pipeline.multi_channel_render and pipeline.multi_channel_capture
+    config defaults are now true
+  * NeuralResidualEchoEstimator has a new pure virtual method, AdjustConfig()
+
+Behaviour changes:
+
+  * The AGC2 input volume controller's maximum target speech level is now
+    -12 dBFS (was -30 dBFS)
+
+Upstream commits, in order:
+
+  * 8cd8620980 Remove the possibility to run AECm (prerequisite)
+  * 1d1ee4503c Refactor AudioProcessingTest to match current audio processing
+    code (prerequisite, tests only)
+  * a6d83994aa Remove aec_mobile (AECm) config from audio_processing.h
+  * 297352a2fd Update comfort noise to be applied identically on all channels
+  * 573e746914 Correct the switching between the coarse and refined filters
+  * 7c388cbabb Changing default values of multi channel processing to be true
+  * 7f5a8b656c Propagate delay estimator fields to AecState
+  * d460e60e19 AEC3: Fix render buffer headroom calculation on underruns
+  * d9b92fe1bc Make max target input level for input controller -12dB
+  * e10cd19640 Enable dynamic on-the-fly AEC3 configuration updates for the
+    suppressor gain computation
+  * fe9c0a1de4 Remove the field trial WebRTC-Aec3AecStateFullResetKillSwitch
+  * 32feae39d0 Remove the field trial WebRTC-Aec3TransparentModeKillSwitch
+  * 4252c6051d Remove the field trial
+    WebRTC-Aec3CoarseFilterResetHangoverKillSwitch
+  * 8dd6b47c83 Remove the field trial
+    WebRTC-Aec3DeactivateInitialStateResetKillSwitch
+  * 86ef7fa42d aec: fix wrong sentinel usage in echo metrics
+  * 05d6bc269c Remove the field trial WebRTC-Aec3HighPassFilterEchoReference
+  * 401392b7e6 Remove the field trial
+    WebRTC-Aec3EchoSaturationDetectionKillSwitch
+
+The ApmTest.Process reference data (output_data_float.pb) is regenerated for
+the new multi-channel defaults.
+
+
 Release 3.0
 -----------
 
