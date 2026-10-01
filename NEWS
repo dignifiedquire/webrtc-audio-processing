@@ -1,3 +1,85 @@
+Unreleased
+----------
+
+Cherry-picks from upstream WebRTC main on top of M145 (branch-heads/7632).
+
+Breaking changes:
+
+  * AudioProcessing::Config::EchoCanceller::mobile_mode is removed, and AECm
+    can no longer be enabled (the AECm sources remain, unused)
+  * The pipeline.multi_channel_render and pipeline.multi_channel_capture
+    config defaults are now true
+  * NeuralResidualEchoEstimator has a new pure virtual method, AdjustConfig()
+
+Behaviour changes:
+
+  * The AGC2 input volume controller's maximum target speech level is now
+    -12 dBFS (was -30 dBFS)
+  * With more than one capture channel, AEC3 applies the same comfort noise
+    to all channels (297352a2fd), and chooses between the coarse and refined
+    filter outputs once for all channels, with a smooth transition on every
+    channel (573e746914). This changes the output of multi-channel capture,
+    which is now the default
+  * On render buffer underruns, the AEC3 render buffer headroom is now 0
+    instead of the full buffer size (d460e60e19). This changes the output
+    only when echo_audibility.use_stationarity_properties is enabled or a
+    neural residual echo estimator is injected
+  * These field trials are removed and no longer have any effect:
+      - WebRTC-Agc2MaxSpeechLevelExperimental (its -12 dBFS maximum is now
+        the default)
+      - WebRTC-Aec3AecStateFullResetKillSwitch
+      - WebRTC-Aec3TransparentModeKillSwitch
+      - WebRTC-Aec3CoarseFilterResetHangoverKillSwitch
+      - WebRTC-Aec3DeactivateInitialStateResetKillSwitch
+      - WebRTC-Aec3HighPassFilterEchoReference (set
+        EchoCanceller3Config::filter.high_pass_filter_echo_reference instead)
+      - WebRTC-Aec3EchoSaturationDetectionKillSwitch (set
+        EchoCanceller3Config::ep_strength.echo_can_saturate to false instead)
+
+Upstream commits, in order:
+
+  * 8cd8620980 Remove the possibility to run AECm (prerequisite)
+  * 1d1ee4503c Refactor AudioProcessingTest to match current audio processing
+    code (prerequisite, tests only)
+  * a6d83994aa Remove aec_mobile (AECm) config from audio_processing.h
+  * 297352a2fd Update comfort noise to be applied identically on all channels
+  * 573e746914 Correct the switching between the coarse and refined filters
+  * 7c388cbabb Changing default values of multi channel processing to be true
+  * 7f5a8b656c Propagate delay estimator fields to AecState
+  * d460e60e19 AEC3: Fix render buffer headroom calculation on underruns
+  * d9b92fe1bc Make max target input level for input controller -12dB
+  * e10cd19640 Enable dynamic on-the-fly AEC3 configuration updates for the
+    suppressor gain computation
+  * fe9c0a1de4 Remove the field trial WebRTC-Aec3AecStateFullResetKillSwitch
+  * 32feae39d0 Remove the field trial WebRTC-Aec3TransparentModeKillSwitch
+  * 4252c6051d Remove the field trial
+    WebRTC-Aec3CoarseFilterResetHangoverKillSwitch
+  * 8dd6b47c83 Remove the field trial
+    WebRTC-Aec3DeactivateInitialStateResetKillSwitch
+  * 86ef7fa42d aec: fix wrong sentinel usage in echo metrics
+  * 05d6bc269c Remove the field trial WebRTC-Aec3HighPassFilterEchoReference
+  * 401392b7e6 Remove the field trial
+    WebRTC-Aec3EchoSaturationDetectionKillSwitch
+
+Test changes:
+
+  * The ApmTest.Process reference data is regenerated for the new
+    multi-channel defaults, because this fork cannot use upstream's files
+    (its builds differ from upstream's in the echo metrics):
+      - output_data_float.pb on macOS arm64 (Apple clang 21, -march=native)
+      - output_data_float_avx2.pb, used on x86 hosts with AVX2, on x86_64
+        Ubuntu 24.04 (GCC 13, -march=native) under Docker linux/amd64
+        emulation. It is not yet confirmed on native x86 hardware
+    The echo-metric checks depend on compiler and flags: on x86_64,
+    GCC 13 without -march=native and clang 18 with -march=native fail
+    them by up to 0.49 and 0.18 (tolerance 0.01)
+  * 1d1ee4503c turns AudioProcessingTest.Formats into a crash test: it no
+    longer checks the output SNR of the 53 format and channel combinations.
+    With -Drust-backend=true this removes an in-suite check of the Rust
+    output across format conversions; it caught the missing noise
+    suppression upper-band processing fixed in 0759dc9
+
+
 Release 3.0
 -----------
 

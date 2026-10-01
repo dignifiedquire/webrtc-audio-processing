@@ -108,6 +108,45 @@ void WindowedPaddedFft(const Aec3Fft& fft,
   std::copy(v.begin(), v.end(), v_old.begin());
 }
 
+// Detects whether the output of the refined filter is more appropriate to use
+// than the output of the coarse filter, returning the result as a bool.
+bool UseRefinedOutput(const SubtractorOutput& subtractor_output) {
+  // As the output of the refined adaptive filter generally should be better
+  // than the coarse filter output, add a margin and threshold for when
+  // choosing the coarse filter output.
+  if (subtractor_output.e2_coarse < 0.9f * subtractor_output.e2_refined &&
+      subtractor_output.y2 > 30.f * 30.f * kBlockSize &&
+      (subtractor_output.s2_refined > 60.f * 60.f * kBlockSize ||
+       subtractor_output.s2_coarse > 60.f * 60.f * kBlockSize)) {
+    return false;
+  }
+
+  // If the refined filter is diverged, choose the filter output that has
+  // the lowest power.
+  if (subtractor_output.e2_coarse < subtractor_output.e2_refined &&
+      subtractor_output.y2 < subtractor_output.e2_refined) {
+    return false;
+  }
+  return true;
+}
+
+// Forms the linear filter output by smoothly transition between the refined and
+// coarse filter outputs according to which of the filters is to be used.
+void FormLinearFilterOutput(bool refined_filter_output_last_selected,
+                            bool use_refined_output,
+                            const SubtractorOutput& subtractor_output,
+                            ArrayView<float> output) {
+  RTC_DCHECK_EQ(subtractor_output.e_refined.size(), output.size());
+  RTC_DCHECK_EQ(subtractor_output.e_coarse.size(), output.size());
+
+  SignalTransition(refined_filter_output_last_selected
+                       ? subtractor_output.e_refined
+                       : subtractor_output.e_coarse,
+                   use_refined_output ? subtractor_output.e_refined
+                                      : subtractor_output.e_coarse,
+                   output);
+}
+
 // Class for removing the echo from the capture signal.
 class EchoRemoverImpl final : public EchoRemover {
  public:
@@ -144,14 +183,10 @@ class EchoRemoverImpl final : public EchoRemover {
   }
 
  private:
-  // Selects which of the coarse and refined linear filter outputs that is most
-  // appropriate to pass to the suppressor and forms the linear filter output by
-  // smoothly transition between those.
-  void FormLinearFilterOutput(const SubtractorOutput& subtractor_output,
-                              ArrayView<float> output);
-
   static std::atomic<int> instance_count_;
   const EchoCanceller3Config config_;
+  const std::optional<EchoCanceller3Config::Suppressor>
+      ml_ree_suppressor_config_;
   const Aec3Fft fft_;
   std::unique_ptr<ApmDataDumper> data_dumper_;
   const Aec3Optimization optimization_;
@@ -174,6 +209,7 @@ class EchoRemoverImpl final : public EchoRemover {
   size_t block_counter_ = 0;
   int gain_change_hangover_ = 0;
   bool refined_filter_output_last_selected_ = true;
+  bool ml_ree_was_active_ = false;
 
   std::vector<std::array<float, kFftLengthBy2>> e_heap_;
   std::vector<std::array<float, kFftLengthBy2Plus1>> Y2_heap_;
@@ -198,6 +234,11 @@ EchoRemoverImpl::EchoRemoverImpl(
     size_t num_capture_channels,
     NeuralResidualEchoEstimator* neural_residual_echo_estimator)
     : config_(config),
+      ml_ree_suppressor_config_(
+          neural_residual_echo_estimator
+              ? std::make_optional(neural_residual_echo_estimator->AdjustConfig(
+                    config.suppressor))
+              : std::nullopt),
       fft_(),
       data_dumper_(new ApmDataDumper(instance_count_.fetch_add(1) + 1)),
       optimization_(DetectOptimization()),
@@ -384,15 +425,31 @@ void EchoRemoverImpl::ProcessCapture(
   subtractor_.Process(*render_buffer, *y, render_signal_analyzer_, aec_state_,
                       subtractor_output);
 
+  const bool ml_ree_is_active = residual_echo_estimator_.IsMlReeActive();
+
   // Compute spectra.
+  bool use_refined_output;
+  if (use_coarse_filter_output_ && !ml_ree_is_active) {
+    use_refined_output = false;
+    for (size_t ch = 0; ch < num_capture_channels_; ++ch) {
+      if (UseRefinedOutput(subtractor_output[ch])) {
+        use_refined_output = true;
+        break;
+      }
+    }
+  } else {
+    use_refined_output = true;
+  }
   for (size_t ch = 0; ch < num_capture_channels_; ++ch) {
-    FormLinearFilterOutput(subtractor_output[ch], e[ch]);
+    FormLinearFilterOutput(refined_filter_output_last_selected_,
+                           use_refined_output, subtractor_output[ch], e[ch]);
     WindowedPaddedFft(fft_, y->View(/*band=*/0, ch), y_old_[ch], &Y[ch]);
     WindowedPaddedFft(fft_, e[ch], e_old_[ch], &E[ch]);
     LinearEchoPower(E[ch], Y[ch], &S2_linear[ch]);
     Y[ch].Spectrum(optimization_, Y2[ch]);
     E[ch].Spectrum(optimization_, E2[ch]);
   }
+  refined_filter_output_last_selected_ = use_refined_output;
   const auto& nearend_spectrum = aec_state_.UsableLinearEstimate() ? E2 : Y2;
   // `y_old_` and `e_old_` now point to the current block. Though their channel
   // layout is already suitable for residual echo estimation, an alias is
@@ -453,9 +510,20 @@ void EchoRemoverImpl::ProcessCapture(
     const bool clock_drift = config_.echo_removal_control.has_clock_drift ||
                              echo_path_variability.clock_drift;
 
+    // Select the active suppressor configuration.
+    const EchoCanceller3Config::Suppressor& active_suppressor_config =
+        (ml_ree_is_active && ml_ree_suppressor_config_.has_value())
+            ? *ml_ree_suppressor_config_
+            : config_.suppressor;
+
+    // Determine if the configuration affecting the suppressor has changed.
+    const bool config_changed = (ml_ree_is_active != ml_ree_was_active_);
+    ml_ree_was_active_ = ml_ree_is_active;
+
     // Compute preferred gains.
     float high_bands_gain;
-    suppression_gain_.GetGain(nearend_spectrum, echo_spectrum, R2, R2_unbounded,
+    suppression_gain_.GetGain(active_suppressor_config, config_changed,
+                              nearend_spectrum, echo_spectrum, R2, R2_unbounded,
                               cng_.NoiseSpectrum(), render_signal_analyzer_,
                               aec_state_, x, clock_drift, &high_bands_gain, &G);
 
@@ -492,40 +560,6 @@ void EchoRemoverImpl::ProcessCapture(
                         aec_state_.MinDirectPathFilterDelay());
   data_dumper_->DumpRaw("aec3_capture_saturation",
                         aec_state_.SaturatedCapture() ? 1 : 0);
-}
-
-void EchoRemoverImpl::FormLinearFilterOutput(
-    const SubtractorOutput& subtractor_output,
-    ArrayView<float> output) {
-  RTC_DCHECK_EQ(subtractor_output.e_refined.size(), output.size());
-  RTC_DCHECK_EQ(subtractor_output.e_coarse.size(), output.size());
-  bool use_refined_output = true;
-  if (use_coarse_filter_output_) {
-    // As the output of the refined adaptive filter generally should be better
-    // than the coarse filter output, add a margin and threshold for when
-    // choosing the coarse filter output.
-    if (subtractor_output.e2_coarse < 0.9f * subtractor_output.e2_refined &&
-        subtractor_output.y2 > 30.f * 30.f * kBlockSize &&
-        (subtractor_output.s2_refined > 60.f * 60.f * kBlockSize ||
-         subtractor_output.s2_coarse > 60.f * 60.f * kBlockSize)) {
-      use_refined_output = false;
-    } else {
-      // If the refined filter is diverged, choose the filter output that has
-      // the lowest power.
-      if (subtractor_output.e2_coarse < subtractor_output.e2_refined &&
-          subtractor_output.y2 < subtractor_output.e2_refined) {
-        use_refined_output = false;
-      }
-    }
-  }
-
-  SignalTransition(refined_filter_output_last_selected_
-                       ? subtractor_output.e_refined
-                       : subtractor_output.e_coarse,
-                   use_refined_output ? subtractor_output.e_refined
-                                      : subtractor_output.e_coarse,
-                   output);
-  refined_filter_output_last_selected_ = use_refined_output;
 }
 
 }  // namespace

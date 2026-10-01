@@ -24,9 +24,9 @@ namespace aec3 {
 MovingAverage::MovingAverage(size_t num_elem, size_t mem_len)
     : num_elem_(num_elem),
       mem_len_(mem_len - 1),
-      scaling_(1.0f / static_cast<float>(mem_len)),
       memory_(num_elem * mem_len_, 0.f),
-      mem_index_(0) {
+      mem_index_(0),
+      number_updates_(0) {
   RTC_DCHECK(num_elem_ > 0);
   RTC_DCHECK(mem_len > 0);
 }
@@ -45,9 +45,10 @@ void MovingAverage::Average(ArrayView<const float> input,
                    std::plus<float>());
   }
 
-  // Divide by mem_len_.
+  // Divide by the number of points used to compute the average.
+  const float scaling = 1.0f / static_cast<float>(number_updates_ + 1);
   for (float& o : output) {
-    o *= scaling_;
+    o *= scaling;
   }
 
   // Update memory.
@@ -56,6 +57,19 @@ void MovingAverage::Average(ArrayView<const float> input,
               memory_.begin() + mem_index_ * num_elem_);
     mem_index_ = (mem_index_ + 1) % mem_len_;
   }
+  number_updates_ = std::min(static_cast<int>(mem_len_), number_updates_ + 1);
+}
+
+void MovingAverage::UpdateMemoryLength(size_t mem_len) {
+  if (mem_len_ + 1 == mem_len) {
+    return;
+  }
+  RTC_DCHECK(mem_len > 0);
+  mem_len_ = mem_len - 1;
+  memory_.resize(num_elem_ * mem_len_);
+  std::fill(memory_.begin(), memory_.end(), 0.0f);
+  mem_index_ = 0;
+  number_updates_ = 0;
 }
 
 }  // namespace aec3

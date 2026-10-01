@@ -1195,6 +1195,11 @@ TEST(EchoCanceller3, InjectedNeuralResidualEchoEstimatorIsUsed) {
       return EchoCanceller3Config();
     }
 
+    EchoCanceller3Config::Suppressor AdjustConfig(
+        const EchoCanceller3Config::Suppressor& config) const override {
+      return config;
+    }
+
    private:
     bool residual_echo_estimate_requested_ = false;
   };
